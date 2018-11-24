@@ -30,6 +30,46 @@ void debug_line(vec3 a, vec3 b, vec4 color, shader *s, Camera *camera)
 	glUseProgram(0);
 }
 
+void draw_circle(int precision, shader *s, Camera *camera, vec4 color, vec3 pos, bool fill, float radius)
+{
+    glUseProgram(s->id);
+    if(fill) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    else glPolygonMode(GL_FRONT_AND_BACK, GL_LINES);
+    
+    
+    //vec3 *data = (vec3*)malloc(sizeof(vec3) * precision);
+    vec3 data[32];
+    
+    for(int i = 0; i < precision; i++)
+    {
+        data[i].x = cos(2.0f * pi * i / precision) * radius;
+        data[i].y = sin(2.0f * pi * i / precision) * radius;
+    }
+    mat4 m = translate(mat4(1.0f), pos);
+    GLuint buff;
+	glGenBuffers(1, &buff);
+	glBindBuffer(GL_ARRAY_BUFFER, buff);
+	glBufferData(GL_ARRAY_BUFFER, precision * sizeof(vec3), &data[0], GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    
+	glUniformMatrix4fv(s->u_view_location, 1, false, glm::value_ptr(camera->get_mat()));
+	//clear the model matrix
+	glUniformMatrix4fv(s->u_model_location, 1, false, &m[0][0]);
+	glUniformMatrix4fv(s->u_projection_location, 1, false, glm::value_ptr(camera->mat_projection));
+	//default shader should  be enabled right now 
+	//(after using different shaders, always switch to default)
+	glUniform1i(s->u_state, 1);
+	glUniform4fv(s->u_color_location, 1, &color[0]);
+	glDrawArrays(GL_POLYGON, 0, precision);
+    glDrawArrays(GL_POINTS, 0, precision);
+    
+	glDisableVertexAttribArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glDeleteBuffers(1, &buff);
+    //free(data);
+}
+
 struct rg_line {
 	vector<vec3> p;
 	vector<vec4> color;
@@ -299,11 +339,11 @@ void init_texture(texture_info &info, string path)
 	glTexImage2D(
 		GL_TEXTURE_2D,
 		0,
-		GL_RED,
+		GL_RGB,
 		x,
 		y,
 		0,
-		GL_RED,
+		GL_RGB,
 		GL_UNSIGNED_BYTE,
 		data);
     

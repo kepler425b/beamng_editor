@@ -469,10 +469,10 @@ int main(int argc, char* argv[])
 	bool is_active = 0;
 	bool node_displayed = 0;
 	vec3 vl = {};
-	Model sphere = import_model("..\data\model.obj");
+	Model sphere = import_model("../data/model.obj");
 	texture_info texture_info;
     
-	init_texture(texture_info, "..\data\kazimer.png");
+	init_texture(texture_info, "../data/kazimer.png");
 	init_text_renderer(text_info);
 	float offset_ratio = 0.5f;
 	bool show_outline = false;
@@ -493,7 +493,8 @@ int main(int argc, char* argv[])
 	vec3 f_g;
 	float cp_f;
 	vec3 bl;
-    
+    int circle_num = 32;
+    bool fill_circle = true;
 	static int fogMode = GL_LINEAR; // Fog mode
 	static float fogStart = 1.0; // Fog start z value.
 	static float fogEnd = 5.0; // Fog end z value.
@@ -685,6 +686,11 @@ int main(int argc, char* argv[])
         
 		draw_model(sphere, vec3_zero, GREEN * 0.5f);
         
+        for(int i = 0; i < circle_num; i++)
+        {
+            draw_circle(circle_num, &default_shader, &camera, BLUE, p*(i*2.0f), fill_circle, 0.5f);
+        }
+        
         
 		p_near = get_mouse_3d(0.0, camera);
 		p_far = get_mouse_3d(1.0, camera);
@@ -768,7 +774,8 @@ int main(int argc, char* argv[])
 			ImGui::SliderFloat("circle_width", &circle_width, 0.1f, 32.0f, "%.3f");
 			ImGui::SliderFloat("camera mass", &c_mass, 0.1f, 3200.0f, "%.3f");
 			ImGui::SliderFloat("gravity", &gravity, -10.0f, 32.0f, "%.3f");
-            
+            ImGui::Checkbox("fill circle", &fill_circle);
+            ImGui::SliderInt("circle_num", &circle_num, 4, 720, "%d");
             
 			if (ImGui::TreeNode("Debug information"))
 			{
