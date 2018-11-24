@@ -59,6 +59,7 @@ using namespace std;
 std::vector<vec3> s_data;
 std::vector<vec3> tmp_data;
 std::vector<vec2> texture_data;
+vector <unsigned int> indicsdasd;
 std::vector<vec3> normal_data;
 
 std::vector<unsigned int> xover;
