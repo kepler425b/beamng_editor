@@ -17,7 +17,7 @@ struct Input
 {
 	union
 	{
-		bool keys[12];
+		bool keys[13];
 		struct
 		{
 			bool m_left_click;
@@ -34,6 +34,7 @@ struct Input
 			bool k_delete;
 			bool k_enter;
 			bool k_space;
+            bool k_r;
 		};
 	};
 	bool is_pressed_m;

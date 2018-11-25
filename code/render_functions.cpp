@@ -328,7 +328,7 @@ struct texture_info
 	GLuint texture_vao, texture_quad_vertices, texture_quad_vertices_uv;
 	GLuint id;
 	Transform t;
-    bool failed;
+    bool fail;
 };
 
 void init_texture(texture_info &info, string path)
@@ -398,7 +398,8 @@ void init_texture(texture_info &info, string path)
 
 void draw_texture_quad(texture_info &info, shader *s, vec3 pos, Camera *camera, bool debug, bool billboard)
 {
-    if(info.fail = true) cout << "draw_texture_quad: not rendering false texture info" << endl; return;
+    if(info.fail) {cout << "draw_texture_quad: not rendering false texture info" << endl; return;
+    }
     
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
