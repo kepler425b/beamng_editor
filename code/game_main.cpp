@@ -472,7 +472,7 @@ int main(int argc, char* argv[])
 	Model sphere = import_model("../data/model.obj");
 	texture_info texture_info;
     
-	init_texture(texture_info, "../data/kazimer.png");
+	init_texture(texture_info, "../data/tomato.png");
 	init_text_renderer(text_info);
 	float offset_ratio = 0.5f;
 	bool show_outline = false;

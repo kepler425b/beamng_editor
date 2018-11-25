@@ -287,7 +287,7 @@ bool init_text_renderer(text_renderer_info &info)
 			texture,
 			glm::ivec2(face->glyph->bitmap.width, face->glyph->bitmap.rows),
 			glm::ivec2(face->glyph->bitmap_left, face->glyph->bitmap_top),
-			face->glyph->advance.x
+			(GLuint)face->glyph->advance.x
 		};
 		info.text_characters.insert(std::pair<GLchar, Character>(c, t));
 	}
@@ -328,25 +328,34 @@ struct texture_info
 	GLuint texture_vao, texture_quad_vertices, texture_quad_vertices_uv;
 	GLuint id;
 	Transform t;
+    bool failed;
 };
 
 void init_texture(texture_info &info, string path)
 {
-	int x, y, bbp;
-	unsigned char* data = stbi_load(path.c_str(), &x, &y, &bbp, 3);
-	glGenTextures(1, &info.id);
-	glBindTexture(GL_TEXTURE_2D, info.id);
-	glTexImage2D(
-		GL_TEXTURE_2D,
-		0,
-		GL_RGB,
-		x,
-		y,
-		0,
-		GL_RGB,
-		GL_UNSIGNED_BYTE,
-		data);
     
+	int x, y, bbp;
+	unsigned char* data = stbi_load(path.c_str(), &x, &y, &bbp, 4);
+    if(!data){ 
+        cout << "STBI_LOAD error, couldn't load image: " + path << endl;
+        info.fail = true;
+        return;
+    }
+    
+    glGenTextures(1, &info.id);
+    glBindTexture(GL_TEXTURE_2D, info.id);
+    glTexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        GL_RGBA,
+        x,
+        y,
+        0,
+        GL_RGBA,
+        GL_UNSIGNED_BYTE,
+        data);
+    
+	cout << "STBI_LOAD: bbp = " + to_string(bbp) << endl;
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -384,10 +393,13 @@ void init_texture(texture_info &info, string path)
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, 0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
+    info.fail = false;
 }
 
 void draw_texture_quad(texture_info &info, shader *s, vec3 pos, Camera *camera, bool debug, bool billboard)
 {
+    if(info.fail = true) cout << "draw_texture_quad: not rendering false texture info" << endl; return;
+    
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -659,9 +671,9 @@ void render_jmodel(JModel *model, Camera *camera, shader *s)
 		{
 			for (int j = 0; j < model->data[i].beams.size();)
 			{
-				r = rand_range(0.1);
-				g = rand_range(0.1);
-				b = rand_range(0.1);
+				r = rand_range();
+				g = rand_range();
+				b = rand_range();
 				vec4 color(r, g, b, 1.0f);
 				s->rand_colors.push_back(color);
 				j++;
