@@ -5,6 +5,13 @@ struct Transform {
 	mat4 m;
 };
 
+struct RigidBody
+{
+    vec3 pos;
+    vec3 velocity;
+    vec3 acceleration;
+    vec3 vl, vc;
+};
 
 struct Time {
 	float dt;

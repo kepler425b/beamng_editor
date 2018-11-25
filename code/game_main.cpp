@@ -491,6 +491,7 @@ int main(int argc, char* argv[])
 	vec3 c_force;
 	float gravity = -9.8f;
 	vec3 f_g;
+    vec3 asd;
 	float cp_f;
 	vec3 bl;
     int circle_num = 32;
@@ -499,6 +500,8 @@ int main(int argc, char* argv[])
 	static float fogStart = 1.0; // Fog start z value.
 	static float fogEnd = 5.0; // Fog end z value.
 	float fogColor[4] = { 1.0, 1.0, 1.0, 0.0 };
+    
+    RigidBody tomato = {};
     
 	while (!quit) {
 		if (isFog) glEnable(GL_FOG);
@@ -539,6 +542,10 @@ int main(int argc, char* argv[])
         
 		camera.mouse_look = mouse_look;
 		camera.orbit_mode = !camera.free_cam_mode;
+        
+        tomato.vc = tomato.pos;
+        tomato.acceleration = (tomato.velocity * time_state.dt) * time_state.dt;
+        
         
 		c_cur = camera.pos;
         
@@ -650,28 +657,10 @@ int main(int argc, char* argv[])
 			}
 		}
 		
-        float grid_size = 16.0f;
-        float grid_scale = 0.25f;
-        float grid_z = -2.0f;
-        /*
-    for(float x = 0.0f; x < grid_size; x++)
-    {
-    
-        debug_line(vec3(x, grid_z, y), vec3(x * grid_scale, grid_z, y), BLUE, &default_shader, &camera);
-        for(float y = 0.0f; y < grid_size; y++)
-        {
-            debug_line(vec3(x, grid_z, y), vec3(x, grid_z, y * grid_scale), BLUE, &default_shader, &camera);
-        }
-    }
-*/
         
-        //tinfo.t.t = scale(mat4(1), vec3(0.25f, 0.25f, 0.25f));
-        n_last = n;
-		n2_last = n2;
         
-		n += (tpos * 0.02f * time_state.dt);
-		n2 += (tpos2 * 0.02f * time_state.dt);
-		float dist = distance(input_state.mouse_w, n);
+		
+		float dist = distance(input_state.mouse_w, tomato.pos);
 		//debug_line(input_state.mouse_w, n, BLUE, &default_shader, &camera);
 		if (dist < 0.5f && input_state.m_left)
 		{
@@ -679,7 +668,7 @@ int main(int argc, char* argv[])
 		}
 		if (ss)
 		{
-			tpos += vec3(input_state.mouse_dt2.x, -input_state.mouse_dt2.y, 0) * 0.5f;
+            tomato.velocity += vec3(input_state.mouse_dt2.x, -input_state.mouse_dt2.y, 0) * 0.5f;
 			if (!input_state.m_left) ss = false;
 		}
         
@@ -688,24 +677,27 @@ int main(int argc, char* argv[])
 		{
 			tpos += n2_delta * length(n2_delta);
 			tpos2 += n_delta * length(n_delta);
-            
-            
         }
         
-        if(n.y <= -2.0f)
+        if(tomato.pos.y <= -2.0f)
         {
-            vec3 dir = normalize(n_delta);
+            vec3 dir = normalize(tomato.velocity);
             vec3 nr = vec3(0, 1.0f, 0);
             float l = dot(dir, nr);
             vec3 r = -2*l*nr + dir;
-            n.y += -2.0 - tpos.y;
-            n + = r;
+            //+= -2.0 - tpos.y;
+            tomato.velocity += r;
             debug_line(n, n + r, RED, &default_shader, &camera);
+            
         }
+        tomato.velocity += vec3(0, 0, 0) * c_mass * time_state.dt;
+        tomato.pos += tomato.velocity * time_state.dt;
         
-		kpl_draw_texture(texture_info, n, 1.0f, show_outline, is_billboard);
         
-		kpl_draw_texture(texture_info, n2, 1.0f, show_outline, is_billboard);
+        
+		kpl_draw_texture(texture_info, tomato.pos, 1.0f, show_outline, is_billboard);
+        
+		//kpl_draw_texture(texture_info, n2, 1.0f, show_outline, is_billboard);
         
 		//kpl_draw_texture(texture_info, input_state.mouse_w, 0.1f, true, is_billboard);
         
@@ -822,12 +814,12 @@ int main(int argc, char* argv[])
 				ImGui::Text("f_g = %.3f, %.3f, %.3f", f_g.x, f_g.y, f_g.z);
 				ImGui::Text("contact point f = %.3f, %.3f, %.3f", cp_f);
                 
-                ImGui::Text("aaaa = %.3f, %.3f, %.3f", a.x, a.y, a.z);
-                ImGui::Text("tpos = %.3f, %.3f, %.3f", tpos.x, tpos.y, tpos.z);
+                ImGui::Text("tomato.acceleration = %.3f, %.3f, %.3f", tomato.acceleration.x, tomato.acceleration.y, tomato.acceleration.z);
+                ImGui::Text("tomato.pos = %.3f, %.3f, %.3f", tomato.pos.x, tomato.pos.y, tomato.pos.z);
                 
 				ImGui::Text("dist = %.3f", dist);
 				ImGui::Text("dist_ab = %.3f", dist_ab);
-				ImGui::Text("n = %.3f, %.3f, %.3f", n_delta.x, n_delta.y, n_delta.z);
+				ImGui::Text("tomato.velocity = %.3f, %.3f, %.3f", tomato.velocity.x, tomato.velocity.y, tomato.velocity.z);
                 
 				ImGui::Text("input_state.move_dt = %.3f, %.3f, %.3f", input_state.move_dt.x, input_state.move_dt.y, input_state.move_dt.z);
 				ImGui::Text("mouse_world = %.3f, %.3f, %.3f", input_state.mouse_w.x, input_state.mouse_w.y, input_state.mouse_w.z);
@@ -950,8 +942,8 @@ int main(int argc, char* argv[])
 		input_state.k_delete = false;
 		input_state.k_enter = false;
         
-		n_delta = n - n_last;
-		n2_delta = n2 - n2_last;
+        tomato.velocity = tomato.vl - tomato.vc;
+        tomato.vl = tomato.vc;
         
 		input_state.mouse_dt3 = mouse_dt3;
         
