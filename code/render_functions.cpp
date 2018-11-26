@@ -329,6 +329,7 @@ struct texture_info
 	GLuint id;
 	Transform t;
     bool fail;
+    vec2 dim;
 };
 
 void init_texture(texture_info &info, string path)
@@ -354,6 +355,8 @@ void init_texture(texture_info &info, string path)
         GL_RGBA,
         GL_UNSIGNED_BYTE,
         data);
+    
+    info.dim = vec2(x, y);
     
 	cout << "STBI_LOAD: bbp = " + to_string(bbp) << endl;
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);

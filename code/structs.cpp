@@ -10,7 +10,8 @@ struct RigidBody
     vec3 pos;
     vec3 velocity;
     vec3 acceleration;
-    vec3 vl, vc;
+    vec3 force;
+    vec2 dim;
 };
 
 struct Time {

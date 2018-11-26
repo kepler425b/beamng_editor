@@ -99,7 +99,7 @@ fvec3 translation_delta_current;
 
 //#include "nlohmann_loop.cpp"
 #include "rapidjson_loop.cpp"
-
+#include "game_loop.cpp"
 
 //size of memory block measured in sizeof(beams) * num
 #define beam_mem_size = 1024
@@ -502,7 +502,7 @@ int main(int argc, char* argv[])
 	float fogColor[4] = { 1.0, 1.0, 1.0, 0.0 };
     
     RigidBody tomato = {};
-    
+    tomato.dim = vec2(texture_info.dim.x, texture_info.dim.y);
 	while (!quit) {
 		if (isFog) glEnable(GL_FOG);
 		else glDisable(GL_FOG);
@@ -543,18 +543,31 @@ int main(int argc, char* argv[])
 		camera.mouse_look = mouse_look;
 		camera.orbit_mode = !camera.free_cam_mode;
         
-        tomato.vc = tomato.pos;
-        tomato.acceleration = (tomato.velocity * time_state.dt) * time_state.dt;
+		vec3 p_dir = p_near - p_far;
+		vec3 p_dir_n = normalize(p_dir);
+		vec3 closest_p = p_near + p_dir_n;
         
         
-		c_cur = camera.pos;
+        
+        
+        
+        
+        tomato.force = vec3(0, gravity, 0) * c_mass;
+        tomato.acceleration = (tomato.force * time_state.dt);
+        tomato.velocity += tomato.acceleration * time_state.dt;
+        tomato.velocity * 0.2f;
+        tomato.pos += tomato.velocity * time_state.dt;
+        c_cur = camera.pos;
         
 		c_velocity = c_dt * time_state.dt;
-		c_force = c_mass * c_velocity;
+		
+        c_force = 1.0f * c_velocity;
         
         if(input_state.k_r)
         {
-            camera.pos = vec3_up;
+            tomato.pos = vec3(0, 4, 0);
+            tomato.velocity = {};
+            //camera.pos = vec3_up;
         }
         
 		if (input_state.k_space)
@@ -603,17 +616,7 @@ int main(int argc, char* argv[])
 		camera.mat_projection = glm::perspective(glm::radians(camera.zoom), 16.0f / 9.0f, 0.1f, 1000.0f);
         
         
-        
-        
-		//if (isWire) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); else glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        
-		vec3 p_dir = p_near - p_far;
-		vec3 p_dir_n = normalize(p_dir);
-		vec3 closest_p = p_near + p_dir_n;
-        
-        
 		jmodel.line_color = vec3(0.2f, 1.0f, 0.2f);
-        
 		jmodel.translate(jmodel.local_position);
 		jmodel.uniformScale(1.0f);
         
@@ -625,27 +628,51 @@ int main(int argc, char* argv[])
 		p *= 1.0f;
 		debug_point(p, RED + GREEN, 10, &default_shader);
 		vec3 d = input_state.mouse_w - sphere.get_pos();
-		//vl += normalize(d) * ((int)input_state.m_left * time_state.dt);
-		//sphere.add_pos(vl);
 		//sphere.add_pos(normalize(input_state.mouse_w) * speed * time_state.dt);
 		sphere.look_at(d);
-		//camera.pos = sphere.pos + vec3_up * 0.5f + (-vec3_forward * 0.2f);
-		//sphere.r(90+time_state.seconds_passed, 45+time_state.dt);
-		//sphere.show_basis();
-        
-		//if (sphere.get_r().x < 0) { clear_color_last = clear_color; clear_color = RED + GREEN * 0.5f; }
-		//else clear_color = clear_color_last;
-        
+		
         
 		//nlohmann_loop(jbeam_d, input_state);
 		rapidjson_loop(document, input_state);
         
+		
+        
+        if(tomato.pos.y <= -2.0f)
+        {
+            vec3 dir = normalize(tomato.velocity);
+            vec3 nr = vec3(0, 1.0f, 0);
+            float l = dot(dir, nr);
+            vec3 r = -2*l*nr + dir;
+            
+            tomato.pos.y += -2.0 - tomato.pos.y;
+            tomato.velocity = -0.02f * tomato.velocity + l * r;
+            
+            debug_line(n, n + r, RED+GREEN, &default_shader, &camera);
+            
+        }
         
         
-		draw_quad(&circle_shader, p, vec3(1.0, 1.0, 1.0), 0.0f, p.x, vec4(0, 0, 0, p.z), &camera, false);
-		//draw_quad(&default_shader, vec3(0, -2, 0), vec3(1, 0, 0), 80, 10.0f, vec4(0, 0, 0, p.z), &camera, false);
-		debug_point(vec3(0, -2, 0), RED + GREEN, 10, &default_shader);
+		float dist = distance(input_state.mouse_w, vec3(tomato.pos.x, tomato.pos.y, 0));
+		
+		if (dist < 1.0f  && input_state.m_left)
+		{
+            
+			ss = true;
+		}
+		if (ss)
+		{
+            tomato.velocity += vec3(input_state.mouse_dt2.x, -input_state.mouse_dt2.y, 0) * 0.1f;
+			if (!input_state.m_left) ss = false;
+		}
+        if(dist < 1.0f) draw_quad(&default_shader, tomato.pos, vec3_up, 0, 1.0f, GREEN, &camera, true);
         
+		kpl_draw_texture(texture_info, tomato.pos, 1.0f, show_outline, is_billboard);
+        
+        
+		debug_line(tomato.pos, tomato.pos + tomato.velocity * 10000.0f, BLUE + GREEN, &default_shader, &camera);
+        
+		debug_point(tomato.pos, BLUE, 8, &default_shader);
+		
 		for (int y = -circle_width; y <= circle_width; y++)
 		{
 			for (int x = -circle_width; x <= circle_width; x++)
@@ -658,63 +685,10 @@ int main(int argc, char* argv[])
 		}
 		
         
-        
-		
-		float dist = distance(input_state.mouse_w, tomato.pos);
-		//debug_line(input_state.mouse_w, n, BLUE, &default_shader, &camera);
-		if (dist < 0.5f && input_state.m_left)
-		{
-			ss = true;
-		}
-		if (ss)
-		{
-            tomato.velocity += vec3(input_state.mouse_dt2.x, -input_state.mouse_dt2.y, 0) * 0.5f;
-			if (!input_state.m_left) ss = false;
-		}
-        
-		float dist_ab = distance(n, n2);
-		if (dist_ab < 0.5f)
-		{
-			tpos += n2_delta * length(n2_delta);
-			tpos2 += n_delta * length(n_delta);
-        }
-        
-        if(tomato.pos.y <= -2.0f)
-        {
-            vec3 dir = normalize(tomato.velocity);
-            vec3 nr = vec3(0, 1.0f, 0);
-            float l = dot(dir, nr);
-            vec3 r = -2*l*nr + dir;
-            //+= -2.0 - tpos.y;
-            tomato.velocity += r;
-            debug_line(n, n + r, RED, &default_shader, &camera);
-            
-        }
-        tomato.velocity += vec3(0, 0, 0) * c_mass * time_state.dt;
-        tomato.pos += tomato.velocity * time_state.dt;
-        
-        
-        
-		kpl_draw_texture(texture_info, tomato.pos, 1.0f, show_outline, is_billboard);
-        
-		//kpl_draw_texture(texture_info, n2, 1.0f, show_outline, is_billboard);
-        
-		//kpl_draw_texture(texture_info, input_state.mouse_w, 0.1f, true, is_billboard);
-        
-		debug_line(n, n + n_delta * length(n_delta) * 1000.0f, BLUE + GREEN, &default_shader, &camera);
-        
-		debug_point(n, BLUE, 8, &default_shader);
-		debug_point(n2, RED + BLUE, 8, &default_shader);
-        
-		draw_model(sphere, vec3_zero, GREEN * 0.5f);
-        
         for(int i = 0; i < circle_num; i++)
         {
             draw_circle(circle_num, &default_shader, &camera, BLUE, p*(i*2.0f), fill_circle, 0.5f);
         }
-        
-        
-        
         
 		p_near = get_mouse_3d(0.0, camera);
 		p_far = get_mouse_3d(1.0, camera);
@@ -796,15 +770,15 @@ int main(int argc, char* argv[])
 			ImGui::Checkbox("is billboard", &is_billboard);
 			ImGui::SliderInt("circle_precision", &circle_precision, 4, 720, "%d");
 			ImGui::SliderFloat("circle_width", &circle_width, 0.1f, 32.0f, "%.3f");
-			ImGui::SliderFloat("camera mass", &c_mass, 0.1f, 3200.0f, "%.3f");
-			ImGui::SliderFloat("gravity", &gravity, -10.0f, 32.0f, "%.3f");
+			ImGui::SliderFloat("mass", &c_mass, 0.1f, 128.0f, "%.4f");
+			ImGui::SliderFloat("gravity", &gravity, -10.0f, 10.0f, "%.4f");
             ImGui::Checkbox("fill circle", &fill_circle);
             ImGui::SliderInt("circle_num", &circle_num, 4, 720, "%d");
             
 			if (ImGui::TreeNode("Debug information"))
 			{
 				ImGui::Text("camera.f() = %.3f, %.3f, %.3f", camera.f().x, camera.f().y, camera.f().z);
-				ImGui::Text("sphere.pos = %.3f, %.3f, %.3f", sphere.get_pos().x, sphere.get_pos().y, sphere.get_pos().z);
+				ImGui::Text("camera.pos = %.3f, %.3f, %.3f", camera.pos.x, camera.pos.y, camera.pos.z);
 				ImGui::Text("sphere.f = %.3f, %.3f, %.3f", sphere.get_f().x, sphere.get_f().y, sphere.get_f().z);
 				ImGui::Text("sphere.r = %.3f, %.3f, %.3f", sphere.get_r().x, sphere.get_r().y, sphere.get_r().z);
 				ImGui::Text("sphere.u = %.3f, %.3f, %.3f", sphere.get_u().x, sphere.get_u().y, sphere.get_u().z);
@@ -815,10 +789,12 @@ int main(int argc, char* argv[])
 				ImGui::Text("contact point f = %.3f, %.3f, %.3f", cp_f);
                 
                 ImGui::Text("tomato.acceleration = %.3f, %.3f, %.3f", tomato.acceleration.x, tomato.acceleration.y, tomato.acceleration.z);
+                
+                ImGui::Text("tomato.force = %.3f, %.3f, %.3f", tomato.force.x, tomato.force.y, tomato.force.z);
                 ImGui::Text("tomato.pos = %.3f, %.3f, %.3f", tomato.pos.x, tomato.pos.y, tomato.pos.z);
                 
 				ImGui::Text("dist = %.3f", dist);
-				ImGui::Text("dist_ab = %.3f", dist_ab);
+				
 				ImGui::Text("tomato.velocity = %.3f, %.3f, %.3f", tomato.velocity.x, tomato.velocity.y, tomato.velocity.z);
                 
 				ImGui::Text("input_state.move_dt = %.3f, %.3f, %.3f", input_state.move_dt.x, input_state.move_dt.y, input_state.move_dt.z);
@@ -942,8 +918,8 @@ int main(int argc, char* argv[])
 		input_state.k_delete = false;
 		input_state.k_enter = false;
         
-        tomato.velocity = tomato.vl - tomato.vc;
-        tomato.vl = tomato.vc;
+        //tomato.velocity = tomato.vl - tomato.vc;
+        //tomato.vl = tomato.vc;
         
 		input_state.mouse_dt3 = mouse_dt3;
         
