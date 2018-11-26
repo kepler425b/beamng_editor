@@ -438,9 +438,9 @@ void draw_texture_quad(texture_info &info, shader *s, vec3 pos, Camera *camera, 
 	glUseProgram(0);
 }
 
-void kpl_draw_texture(texture_info &info, vec3 pos, float sc, bool debug, bool billboard)
+void kpl_draw_texture(texture_info &info, vec3 pos, vec3 sc, bool debug, bool billboard)
 {
-	info.t.t = glm::translate(mat4(1.0f), pos) * scale(mat4(1.0f), vec3(sc, sc, sc));
+	info.t.t = glm::translate(mat4(1.0f), pos) * scale(mat4(1.0f), sc);
 	draw_texture_quad(info, &texture_shader, pos, &camera, debug, billboard);
 }
 

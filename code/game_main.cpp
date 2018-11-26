@@ -555,7 +555,7 @@ int main(int argc, char* argv[])
         tomato.force = vec3(0, gravity, 0) * c_mass;
         tomato.acceleration = (tomato.force * time_state.dt);
         tomato.velocity += tomato.acceleration * time_state.dt;
-        tomato.velocity * 0.2f;
+        //tomato.velocity * 0.2f;
         tomato.pos += tomato.velocity * time_state.dt;
         c_cur = camera.pos;
         
@@ -636,16 +636,18 @@ int main(int argc, char* argv[])
 		rapidjson_loop(document, input_state);
         
 		
-        
+        vec3 v;
         if(tomato.pos.y <= -2.0f)
         {
             vec3 dir = normalize(tomato.velocity);
             vec3 nr = vec3(0, 1.0f, 0);
             float l = dot(dir, nr);
             vec3 r = -2*l*nr + dir;
-            
+            vec3 n = normalize(r);
             tomato.pos.y += -2.0 - tomato.pos.y;
-            tomato.velocity = -0.02f * tomato.velocity + l * r;
+            v = n * (0.5f * length(tomato.velocity)); 
+            tomato.velocity = v;
+            tomato.velocity * 0.5f;
             
             debug_line(n, n + r, RED+GREEN, &default_shader, &camera);
             
@@ -666,7 +668,7 @@ int main(int argc, char* argv[])
 		}
         if(dist < 1.0f) draw_quad(&default_shader, tomato.pos, vec3_up, 0, 1.0f, GREEN, &camera, true);
         
-		kpl_draw_texture(texture_info, tomato.pos, 1.0f, show_outline, is_billboard);
+		kpl_draw_texture(texture_info, tomato.pos, vec3(1, 1, 1), show_outline, is_billboard);
         
         
 		debug_line(tomato.pos, tomato.pos + tomato.velocity * 10000.0f, BLUE + GREEN, &default_shader, &camera);
@@ -687,7 +689,7 @@ int main(int argc, char* argv[])
         
         for(int i = 0; i < circle_num; i++)
         {
-            draw_circle(circle_num, &default_shader, &camera, BLUE, p*(i*2.0f), fill_circle, 0.5f);
+            draw_circle(circle_num, &default_shader, &camera, TRAN, p*(i*2.0f), fill_circle, 0.5f);
         }
         
 		p_near = get_mouse_3d(0.0, camera);

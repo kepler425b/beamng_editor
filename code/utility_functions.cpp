@@ -10,7 +10,7 @@
 #define RED vec4(1, 0, 0, 1)
 #define GREEN vec4(0, 1, 0, 1)
 #define BLUE vec4(0, 0, 1, 1)
-
+#define TRAN vec4(0.97f, 0.83f, 0.17, 1.0f)
 //vectors
 #define vec3_zero vec3(0, 0, 0)
 #define vec3_up vec3(0, 1, 0)
@@ -56,7 +56,7 @@ bool
 write_file(char* fileName, string data)
 {
 	bool error = false;
-
+    
 	HANDLE fileHandle = CreateFileA(fileName, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, 0, 0);
 	if (fileHandle != INVALID_HANDLE_VALUE)
 	{
@@ -162,23 +162,23 @@ vec3 mouse_position(Camera *camera)
 	GLfloat world_z = ((camera->z_far - camera->z_near) / 2)* clip_z + (camera->z_far + camera->z_near) / 2;
 	cout << "z : " << win_z << endl;
 	cout << "w z : " << world_z << endl;
-
+    
 	return result = glm::unProject(vec3(win_x, win_y, win_z), camera->get_mat(), camera->mat_projection, viewport);
 }
 
 
 vec2 get2dPoint(vec3 point3D, mat4 viewMatrix,
-	mat4 projectionMatrix, int width, int height) {
-
+                mat4 projectionMatrix, int width, int height) {
+    
 	mat4 viewProjectionMatrix = projectionMatrix * viewMatrix;
 	//transform world to clipping coordinates
 	point3D = viewProjectionMatrix * vec4(point3D, 1.0f);
 	int winX = (int)std::round(((point3D.x + 1) / 2.0) *
-		width);
+                               width);
 	//we calculate -point3D.getY() because the screen Y axis is
 	//oriented top->down 
 	int winY = (int)std::round(((1 - point3D.y) / 2.0) *
-		height);
+                               height);
 	return vec2(winX, winY);
 }
 
@@ -188,7 +188,7 @@ char* file_to_buf(char *file)
 	FILE *fptr;
 	long length;
 	char *buf;
-
+    
 	fptr = fopen(file, "rb"); /* Open file for reading */
 	if (!fptr) /* Return NULL on failure */
 		return NULL;
@@ -199,6 +199,6 @@ char* file_to_buf(char *file)
 	fread(buf, length, 1, fptr); /* Read the contents of the file in to the buffer */
 	fclose(fptr); /* Close the file */
 	buf[length] = 0; /* Null terminator */
-
+    
 	return buf; /* Return the buffer */
 }
