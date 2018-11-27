@@ -5,6 +5,13 @@ struct Transform {
 	mat4 m;
 };
 
+struct Time {
+	float dt;
+	float seconds_passed;
+	float second_per_tick;
+	float fps;
+};
+
 struct RigidBody
 {
     vec3 pos;
@@ -12,14 +19,22 @@ struct RigidBody
     vec3 acceleration;
     vec3 force;
     vec2 dim;
+    float mass;
+    void add_force(vec3 f)
+    {
+        force += f;
+    }
+    void update_physics(Time &time_state)
+    {
+        vec3 f = vec3(0, -9.8f, 0) * mass;
+        acceleration = 1.0f/mass * force + f * time_state.dt * time_state.dt * 0.5f;
+        velocity += acceleration;
+        
+        pos += velocity;
+        force = {};
+    }
 };
 
-struct Time {
-	float dt;
-	float seconds_passed;
-	float second_per_tick;
-	float fps;
-};
 
 struct Input
 {

@@ -502,7 +502,12 @@ int main(int argc, char* argv[])
 	float fogColor[4] = { 1.0, 1.0, 1.0, 0.0 };
     
     RigidBody tomato = {};
+    tomato.mass = 1.0f;
     tomato.dim = vec2(texture_info.dim.x, texture_info.dim.y);
+    
+    vector<RigidBody> bullets;
+    
+    
 	while (!quit) {
 		if (isFog) glEnable(GL_FOG);
 		else glDisable(GL_FOG);
@@ -551,17 +556,29 @@ int main(int argc, char* argv[])
         
         
         
+        //NOTE: since acceleration formula is a = F * m/s * m/s (m/s squared).
+        //force is 
         
-        tomato.force = vec3(0, gravity, 0) * c_mass;
-        tomato.acceleration = (tomato.force * time_state.dt);
-        tomato.velocity += tomato.acceleration * time_state.dt;
+        
+        
+        vec3 force = vec3(0, gravity, 0) * tomato.mass;
+        tomato.acceleration = 1.0f/tomato.mass * tomato.force + force * time_state.dt * time_state.dt * 0.5f;
+        tomato.velocity += tomato.acceleration;
         //tomato.velocity * 0.2f;
-        tomato.pos += tomato.velocity * time_state.dt;
+        tomato.pos += tomato.velocity;
+        tomato.force = vec3_zero;
         c_cur = camera.pos;
         
 		c_velocity = c_dt * time_state.dt;
 		
         c_force = 1.0f * c_velocity;
+        
+        for(int i = 0; i < bullets.size(); i++)
+        {
+            bullets[i].update_physics(time_state);
+        }
+        
+        
         
         if(input_state.k_r)
         {
@@ -645,9 +662,9 @@ int main(int argc, char* argv[])
             vec3 r = -2*l*nr + dir;
             vec3 n = normalize(r);
             tomato.pos.y += -2.0 - tomato.pos.y;
-            v = n * (0.5f * length(tomato.velocity)); 
+            v = n * (0.4f * length(tomato.velocity)); 
             tomato.velocity = v;
-            tomato.velocity * 0.5f;
+            //tomato.add_force(vec3(16.0f, 0, 0.9f));
             
             debug_line(n, n + r, RED+GREEN, &default_shader, &camera);
             
@@ -663,12 +680,40 @@ int main(int argc, char* argv[])
 		}
 		if (ss)
 		{
-            tomato.velocity += vec3(input_state.mouse_dt2.x, -input_state.mouse_dt2.y, 0) * 0.1f;
+            tomato.add_force(vec3(input_state.mouse_dt2.x, -input_state.mouse_dt2.y, 0) * 0.001f);
 			if (!input_state.m_left) ss = false;
 		}
         if(dist < 1.0f) draw_quad(&default_shader, tomato.pos, vec3_up, 0, 1.0f, GREEN, &camera, true);
         
+        float strength = 2.0f;
+        if(input_state.a_up) tomato.add_force(vec3(0, 1.0f, 0)* strength);
+        
+        if(input_state.a_down) tomato.add_force(vec3(0, -1.0f, 0)* strength);
+        
+        if(input_state.a_left) tomato.add_force(vec3(-1.0f, 0, 0)* strength);
+        
+        if(input_state.a_right) tomato.add_force(vec3(1.0f, 0, 0)* strength);
+        
+        static float delay;
+        if(time_state.seconds_passed > delay + 0.5f && input_state.m_left){
+            RigidBody t;
+            t.pos = tomato.pos;
+            t.acceleration = {};
+            t.mass = 20.0f;
+            t.add_force(normalize(vec3(input_state.mouse_w.x, input_state.mouse_w.y, 0.0f) - tomato.pos) * 10.5f);
+            bullets.push_back(t);
+            delay = time_state.seconds_passed;
+        }
+        
+        
+        resolve_collisions(bullets);
+        
 		kpl_draw_texture(texture_info, tomato.pos, vec3(1, 1, 1), show_outline, is_billboard);
+        
+        for(int i = 0; i < bullets.size(); i++)
+        {
+            kpl_draw_texture(texture_info, bullets[i].pos, vec3(1.0f, 1.0f, 1.0f), show_outline, is_billboard);
+        }
         
         
 		debug_line(tomato.pos, tomato.pos + tomato.velocity * 10000.0f, BLUE + GREEN, &default_shader, &camera);
@@ -772,7 +817,7 @@ int main(int argc, char* argv[])
 			ImGui::Checkbox("is billboard", &is_billboard);
 			ImGui::SliderInt("circle_precision", &circle_precision, 4, 720, "%d");
 			ImGui::SliderFloat("circle_width", &circle_width, 0.1f, 32.0f, "%.3f");
-			ImGui::SliderFloat("mass", &c_mass, 0.1f, 128.0f, "%.4f");
+			ImGui::SliderFloat("mass", &tomato.mass, 0.1f, 128.0f, "%.4f");
 			ImGui::SliderFloat("gravity", &gravity, -10.0f, 10.0f, "%.4f");
             ImGui::Checkbox("fill circle", &fill_circle);
             ImGui::SliderInt("circle_num", &circle_num, 4, 720, "%d");
