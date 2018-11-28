@@ -7,8 +7,16 @@ const GLfloat SENSITIVTY = 30.0f;
 const GLfloat ZOOM = 45.0f;
 const GLfloat ZOOM_SENSITIVITY = 5.0f;
 
-struct Camera {
 
+typedef enum {
+    CMODE_ORTHOGRAPHIC= 0, 
+    CMODE_FREE= 1,
+    CMODE_ORBIT= 3
+} CAMERA_MODE;
+
+
+struct Camera {
+    
 	vec3 pos;
 	vec3 model_center_mass;
 	vec3 forward;
@@ -17,7 +25,12 @@ struct Camera {
 	vec3 world_up;
 	vec3 direction;
 	vec3 origin;
-
+    
+    
+    
+    CAMERA_MODE view_mode = CMODE_ORTHOGRAPHIC;
+    
+    
 	float z_near;
 	float z_far;
 	float speed;
@@ -29,18 +42,16 @@ struct Camera {
 	float orbit_distance;
 	float mouse_sensitivity;
 	float zoom_sensitivity;
-	bool free_cam_mode;
-	bool orbit_mode;
 	bool mouse_look;
 	mat4  mat_view;
 	mat4  mat_projection;
 	mat4  mat_fixed;
 	mat4  mat_rotation;
-
+    
 	void init_camera(vec3 pos, vec3 center_mass, vec3 forward, vec3 up,
-		float yaw, float pitch,
-		float speed, float mouse_sensitivity,
-		float zoom, float zoom_sensitivity, float z_near, float z_far)
+                     float yaw, float pitch,
+                     float speed, float mouse_sensitivity,
+                     float zoom, float zoom_sensitivity, float z_near, float z_far)
 	{
 		this->zoom = 75.0f;
 		this->speed = 8.0f;
@@ -55,7 +66,6 @@ struct Camera {
 		this->pitch_orbit = pitch;
 		this->mouse_sensitivity = 0.5f;
 		this->zoom_sensitivity = zoom_sensitivity;
-		this->free_cam_mode = true;
 		this->mouse_look = true;
 		this->orbit_distance = 2.0f;
 		this->mat_projection = glm::perspective(glm::radians(this->zoom), 4.0f / 3.0f, z_near, z_far);
@@ -64,12 +74,12 @@ struct Camera {
 		this->z_near = z_near;
 		this->z_far = z_far;
 	}
-
+    
 	mat4 get_mat()
 	{
 		return this->mat_view;
 	}
-
+    
 	vec3 f()
 	{
 		return vec3(get_mat()[2][0], get_mat()[2][1], get_mat()[2][2]);
@@ -95,13 +105,13 @@ void camera_update_rotation(Camera *camera, const vec2 *mouse_dt, bool invertY)
 	{
 		camera->pitch -= mouse_dt->y * camera->mouse_sensitivity;
 	}
-
+    
 	if (camera->pitch >= 89.0f)
 		camera->pitch = 89.0f;
-
+    
 	if (camera->pitch <= -89.0f)
 		camera->pitch = -89.0f;
-
+    
 	glm::vec3 front;
 	front.x = cos(radians(camera->yaw)) * cos(radians(camera->pitch));
 	front.y = sin(radians(camera->pitch));
@@ -138,7 +148,7 @@ void camera_rotate(Camera *camera, vec3 axis, float angle)
 	f.y = camera->forward.y;
 	f.z = camera->forward.z;
 	f.w = 1.0f;
-
+    
 	camera->forward = f * rotate(mat4(1.0f), angle, axis);
 }
 

@@ -104,9 +104,20 @@ void process_input()
                     break;
                     
                     case SDLK_o:
-                    camera.free_cam_mode = !camera.free_cam_mode;
+                    camera.view_mode = CMODE_ORBIT;
                     mouse_mode_switch = true;
                     break;
+                    
+                    case SDLK_u:
+                    camera.view_mode = CMODE_ORTHOGRAPHIC;
+                    mouse_mode_switch = true;
+                    break;
+                    
+                    case SDLK_i:
+                    camera.view_mode = CMODE_FREE;
+                    mouse_mode_switch = true;
+                    break;
+                    
                     
                     case SDLK_UP:
                     input_state.a_up = true;

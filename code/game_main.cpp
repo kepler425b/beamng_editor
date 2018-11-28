@@ -546,7 +546,8 @@ int main(int argc, char* argv[])
 		input_state.mouse.y = y;
         
 		camera.mouse_look = mouse_look;
-		camera.orbit_mode = !camera.free_cam_mode;
+		
+        
         
 		vec3 p_dir = p_near - p_far;
 		vec3 p_dir_n = normalize(p_dir);
@@ -613,7 +614,7 @@ int main(int argc, char* argv[])
 		float dt = time_state.dt;
 		vec2 mdt = vec2(input_state.mouse_dt2.x, input_state.mouse_dt2.y);
         
-		if (camera.free_cam_mode)
+		if (camera.view_mode == CMODE_FREE)
 		{
 			if (camera.mouse_look)
 			{
@@ -622,7 +623,7 @@ int main(int argc, char* argv[])
 			camera_update_translation(&camera, &input_state, dt);
 			camera_look_at(&camera, camera.pos, camera.pos + camera.forward);
 		}
-		else if (camera.orbit_mode)
+		else if (camera.view_mode == CMODE_ORBIT)
 		{
 			camera_look_at(&camera, camera.forward * 3.f, vec3_zero);
 			if (input_state.m_middle)
@@ -630,8 +631,26 @@ int main(int argc, char* argv[])
 				camera_update_rotation(&camera, &mdt, true);
 			}
 		}
-		camera.mat_projection = glm::perspective(glm::radians(camera.zoom), 16.0f / 9.0f, 0.1f, 1000.0f);
+        else if(camera.view_mode == CMODE_ORTHOGRAPHIC)
+        {
+            if (camera.mouse_look)
+			{
+				camera_update_rotation(&camera, &mdt, false);
+			}
+			camera_update_translation(&camera, &input_state, dt);
+            
+			camera_look_at(&camera, camera.pos, camera.pos + camera.forward);
+        }
         
+        if(camera.view_mode == CMODE_ORTHOGRAPHIC){
+            camera.mat_projection = glm::ortho(0.0f, (float)display_info.w * 0.025f, 0.0f, (float)display_info.h * 0.025f, 0.1f, 1000.f);
+        }
+        else
+        {
+            camera.mat_projection = glm::perspective(glm::radians(camera.zoom), 16.0f / 9.0f, 0.1f, 1000.0f);
+        }
+        
+        camera.pos = vec3(0, 0, 20);
         
 		jmodel.line_color = vec3(0.2f, 1.0f, 0.2f);
 		jmodel.translate(jmodel.local_position);
@@ -706,6 +725,13 @@ int main(int argc, char* argv[])
         }
         
         
+        for(int i = 0; i < bullets.size(); i++)
+        {
+            bullets[i].update_physics(time_state);
+        }
+        
+        
+        
         resolve_collisions(bullets);
         
 		kpl_draw_texture(texture_info, tomato.pos, vec3(1, 1, 1), show_outline, is_billboard);
@@ -717,6 +743,8 @@ int main(int argc, char* argv[])
         
         
 		debug_line(tomato.pos, tomato.pos + tomato.velocity * 10000.0f, BLUE + GREEN, &default_shader, &camera);
+        
+        debug_line(tomato.pos, input_state.mouse_w - tomato.pos, BLUE + RED, &default_shader, &camera);
         
 		debug_point(tomato.pos, BLUE, 8, &default_shader);
 		
@@ -831,6 +859,7 @@ int main(int argc, char* argv[])
 				ImGui::Text("sphere.u = %.3f, %.3f, %.3f", sphere.get_u().x, sphere.get_u().y, sphere.get_u().z);
 				ImGui::Text("camera dt = %.3f, %.3f, %.3f", c_dt.x, c_dt.y, c_dt.z);
 				ImGui::Text("camera velocity = %.3f, %.3f, %.3f", c_velocity.x, c_velocity.y, c_velocity.z);
+                ImGui::Text("camera view mode = %d", camera.view_mode);
 				ImGui::Text("camera force = %.3f, %.3f, %.3f", c_force.x, c_force.y, c_force.z);
 				ImGui::Text("f_g = %.3f, %.3f, %.3f", f_g.x, f_g.y, f_g.z);
 				ImGui::Text("contact point f = %.3f, %.3f, %.3f", cp_f);

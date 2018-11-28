@@ -1,6 +1,6 @@
 
 
-//NOTE: temp;
+//NOTE: I should remove entities that passed out of the world by big distances.
 
 void resolve_collisions(vector<RigidBody> &t)
 {
@@ -21,7 +21,7 @@ void resolve_collisions(vector<RigidBody> &t)
             debug_line(n, n + r, RED+GREEN, &default_shader, &camera);
         }
         else {
-            return;
+            continue;
         }
     }
 }
