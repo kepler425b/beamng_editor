@@ -580,7 +580,6 @@ int main(int argc, char* argv[])
         }
         
         
-        
         if(input_state.k_r)
         {
             tomato.pos = vec3(0, 4, 0);
@@ -594,21 +593,6 @@ int main(int argc, char* argv[])
 			input_state.k_space = false;
 		}
         
-        vec3 a = (c_dt / time_state.dt) / time_state.dt;
-        
-        f_g += vec3(0, gravity, 0) * c_mass * time_state.dt;
-		camera.pos += f_g;
-        
-		cp_f = (pow(length(c_velocity * c_mass), 2) + pow(length(vec3_up), 2)) / 2;
-		if (camera.pos.y <= -2.0f)
-		{
-			//camera.pos += cp_f;
-		}
-		if (camera.pos.y <= -2.0f)
-		{
-			camera.pos.y += -2.0 - camera.pos.y;
-			f_g = vec3_zero;
-		}
 		vec2 hwin = { display_info.w / 2, display_info.h / 2 };
         
 		float dt = time_state.dt;
@@ -643,16 +627,19 @@ int main(int argc, char* argv[])
         }
         
         if(camera.view_mode == CMODE_ORTHOGRAPHIC){
-            camera.mat_projection = glm::ortho(0.0f, (float)display_info.w * 0.025f, 0.0f, (float)display_info.h * 0.025f, 0.1f, 1000.f);
+            camera.mat_projection = glm::ortho(0.0f, 16.0f, 0.0f, 9.0f, 0.1f, 1000.f);
         }
         else
         {
             camera.mat_projection = glm::perspective(glm::radians(camera.zoom), 16.0f / 9.0f, 0.1f, 1000.0f);
         }
+        if(input_state.k_r)
+        {
+            camera.pos = vec3_zero;
+        }
         
-        camera.pos = vec3(0, 0, 20);
         
-		jmodel.line_color = vec3(0.2f, 1.0f, 0.2f);
+        jmodel.line_color = vec3(0.2f, 1.0f, 0.2f);
 		jmodel.translate(jmodel.local_position);
 		jmodel.uniformScale(1.0f);
         
@@ -729,7 +716,6 @@ int main(int argc, char* argv[])
         {
             bullets[i].update_physics(time_state);
         }
-        
         
         
         resolve_collisions(bullets);

@@ -28,7 +28,7 @@ struct Camera {
     
     
     
-    CAMERA_MODE view_mode = CMODE_ORTHOGRAPHIC;
+    CAMERA_MODE view_mode = CMODE_FREE;
     
     
 	float z_near;
