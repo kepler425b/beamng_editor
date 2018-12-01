@@ -13,14 +13,14 @@ void rapidjson_loop(Document &data, Input &input_state)
 	int bi = 0;
 	Value::ValueIterator nodes = 0;
 	for (Value::MemberIterator itr = data.MemberBegin();
-	itr != data.MemberEnd(); ++itr)
+		 itr != data.MemberEnd(); ++itr)
 	{
 		if (itr->value.IsObject())
 		{
 			unsigned int node_index = 0;
 			o.name = itr->name.GetString();
 			Value::MemberIterator c = itr->value.FindMember("nodes");
-
+			
 			if (c != data.MemberEnd() && c->name == "nodes")
 			{
 				for (nodes = c->value.Begin(); nodes != c->value.End(); nodes++)
@@ -28,25 +28,25 @@ void rapidjson_loop(Document &data, Input &input_state)
 					if (nodes->IsArray())
 					{
 						for (Value::ValueIterator j = nodes->Begin(); j != nodes->End(); j++)
-						if (j[0].IsString() && j[1].IsFloat() && j[2].IsFloat() && j[3].IsFloat())
+							if (j[0].IsString() && j[1].IsFloat() && j[2].IsFloat() && j[3].IsFloat())
 						{
 							jvertex v;
 							string id = j[0].GetString();
 							/*int a;
-							const char *idc = id.c_str();
-							unsigned char j, k;
-							j = 0;
-							k = 0;
-							for (unsigned char i = 0; i < strlen(idc); i++)
-							{
-							if (isdigit(idc[i])) j++;
-
-							else k++;
-							}
-							if (j > 0) a = atoi(idc + k);*/
-
+	   const char *idc = id.c_str();
+	   unsigned char j, k;
+	   j = 0;
+	   k = 0;
+	   for (unsigned char i = 0; i < strlen(idc); i++)
+	   {
+	   if (isdigit(idc[i])) j++;
+	   
+	   else k++;
+	   }
+	   if (j > 0) a = atoi(idc + k);*/
+							
 							temp_map.insert(pair<string, unsigned int>(id, node_index));
-
+							
 							v.id = id;
 							v.index = node_index;
 							v.pos.x = j[1].GetFloat();
@@ -59,14 +59,14 @@ void rapidjson_loop(Document &data, Input &input_state)
 								push_point(selected_points_to_render, v.pos, GREEN + RED, 16);
 								button_pushed = true;
 							}
-
-
+							
+							
 							if (1)
 							{
 								kpl_draw_text(text_info, v.pos, v.id + ":" + to_string(v.active), 0.25f, glm::vec4(0.0, 0.2f, 0.65f, 1.0f), false);
 							}
-
-
+							
+							
 							o.nodes.push_back(v);
 							//cout << "node: " << id << endl;
 							push_point(points_to_render, v.pos, GREEN, 8);
@@ -95,7 +95,7 @@ void rapidjson_loop(Document &data, Input &input_state)
 							b_group = {};
 						}
 						for (Value::MemberIterator itr = m->value[i].MemberBegin();
-							itr != m->value[i].MemberEnd(); ++itr)
+							 itr != m->value[i].MemberEnd(); ++itr)
 						{
 							if (itr->name == "beamSpring")
 							{
@@ -181,7 +181,7 @@ void rapidjson_loop(Document &data, Input &input_state)
 							if (itr->name == "beamType") b_group.bounded.type = itr->value.GetString();
 							if (itr->name == "beamLongBound") b_group.bounded.long_bound = itr->value.GetFloat();
 							if (itr->name == "beamShortBound") b_group.bounded.short_bound = itr->value.GetFloat();
-
+							
 						}
 					}
 					if (m->value[i].IsArray())
@@ -194,16 +194,16 @@ void rapidjson_loop(Document &data, Input &input_state)
 							sb = m->value[i][1].GetString();
 							alen = m->value[i][0].GetStringLength();
 							blen = m->value[i][1].GetStringLength();
-
+							
 							if (sa.at(alen - 1) && sb.at(blen - 1) != ':')
 							{
 								beam_found = true;
 								beam_pair b;
 								b.a = sa;
 								b.b = sb;
-
+								
 								e = temp_map.end();
-
+								
 								ait = temp_map.find(sa);
 								bit = temp_map.find(sb);
 								if (ait != e && bit != e)
@@ -212,7 +212,7 @@ void rapidjson_loop(Document &data, Input &input_state)
 									ai = ait->second;
 									//o.nodes[ai].weight = rand();
 									//o.nodes[bi].weight = rand();
-	
+									
 									push_lines(lines_to_render, o.nodes[ai].pos, o.nodes[bi].pos, RED);
 								}
 								//b_group.beams.push_back(b);
@@ -221,22 +221,22 @@ void rapidjson_loop(Document &data, Input &input_state)
 						}
 					}
 					/*else if (i >= m->value.Size())
-					{
-					o.beams.push_back(b_group);
-					}*/
+	 {
+	 o.beams.push_back(b_group);
+	 }*/
 				}
 			}
 			b_group.id = o.beams.size();
 			o.beams.push_back(b_group);
-
+			
 		}
-	//printf("Type of member %s and has %d members.\n",
-
-	//	itr->name.GetString(), itr->value.MemberCount());
-	objects.push_back(o);
-	o = {};
-	temp_map = {};
-
+		//printf("Type of member %s and has %d members.\n",
+		
+		//	itr->name.GetString(), itr->value.MemberCount());
+		objects.push_back(o);
+		o = {};
+		temp_map = {};
+		
 		if (input_state.k_enter)
 		{
 			Value::MemberIterator c = itr->value.FindMember("nodes");
@@ -257,4 +257,15 @@ void rapidjson_loop(Document &data, Input &input_state)
 		}
 	}
 	button_pushed = false;
+	
+	lines_to_render.p.insert(lines_to_render.p.end(), selected_lines_to_render.p.begin(), selected_lines_to_render.p.end());
+	lines_to_render.color.insert(lines_to_render.color.end(), selected_lines_to_render.color.begin(), selected_lines_to_render.color.end());
+	
+	points_to_render.p.insert(points_to_render.p.end(), selected_points_to_render.p.begin(), selected_points_to_render.p.end());
+	points_to_render.color.insert(points_to_render.color.end(), selected_points_to_render.color.begin(), selected_points_to_render.color.end());
+	render_line_group(lines_to_render, &default_shader, &camera);
+	render_point_group(points_to_render, &default_shader, &camera);
+	selected_lines_to_render = {};
+	selected_points_to_render = {};
+	
 }

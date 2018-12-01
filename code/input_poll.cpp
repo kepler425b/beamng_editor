@@ -140,22 +140,22 @@ void process_input()
                     break;
                     
                     case SDLK_a:
-                    input_state.a_left = true;
+                    input_state.k_left = true;
                     input_state.move_dt.x = -1.0f;
                     break;
                     
                     case SDLK_d:
-                    input_state.a_right = true;
+                    input_state.k_right = true;
                     input_state.move_dt.x = 1.0f;
                     break;
                     
                     case SDLK_w:
-                    input_state.a_forward = true;
+                    input_state.k_forward = true;
                     input_state.move_dt.z = 1.0f;
                     break;
                     
                     case SDLK_s:
-                    input_state.a_backward = true;
+                    input_state.k_backward = true;
                     input_state.move_dt.z = -1.0f;
                     break;
                     
@@ -199,19 +199,19 @@ void process_input()
                     break;
                     
                     case SDLK_a:
-                    input_state.a_left = false;
+                    input_state.k_left = false;
                     break;
                     
                     case SDLK_d:
-                    input_state.a_right = false;
+                    input_state.k_right = false;
                     break;
                     
                     case SDLK_w:
-                    input_state.a_forward = false;
+                    input_state.k_forward = false;
                     break;
                     
                     case SDLK_s:
-                    input_state.a_backward = false;
+                    input_state.k_backward = false;
                     break;
                     
                     case SDLK_LSHIFT:

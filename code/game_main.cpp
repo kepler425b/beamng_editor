@@ -66,18 +66,17 @@ std::vector<unsigned int> v_index;
 std::vector<unsigned int> indices;
 map <string, unsigned int> temp_map;
 
+#include "defines.cpp"
 #include "structs.cpp"
 #include "camera.cpp"
 #include "utility_functions.cpp"
 #include "shaders.cpp"
 #include "model.cpp"
-#include "collision.cpp"
 #include "render_functions.cpp"
+#include "collision.cpp"
 #include "file_io.cpp"
 object o;
 vector <object> objects;
-static Input input_state = {};
-Time time_state = {};
 display display_info;
 
 vec2 window_center = { display_info.w / 2, display_info.h / 2 };
@@ -157,8 +156,7 @@ MessageCallback(GLenum source,
 
 bool show_demo_window = true;
 bool show_another_window = false;
-vec4 clear_color = vec4(0.45f, 0.55f, 0.60f, 1.00f);
-vec4 clear_color_last = clear_color;
+vec4 clear_color = fvec4(0.15f, 0.15f, 0.1f, 1.0f);
 
 
 int main(int argc, char* argv[])
@@ -230,10 +228,11 @@ int main(int argc, char* argv[])
 	}
     
     
-	glDisable(GL_CULL_FACE);
+	glEnable(GL_CULL_FACE);
+	glFrontFace(GL_CW);
 	glEnable(GL_PROGRAM_POINT_SIZE);
 	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_ALWAYS);
+	glDepthFunc(GL_LESS);
     
 	SDL_GL_SetSwapInterval(1);
 	int w, h;
@@ -506,8 +505,22 @@ int main(int argc, char* argv[])
     tomato.dim = vec2(texture_info.dim.x, texture_info.dim.y);
     
     vector<RigidBody> bullets;
+    Sphere A;
+    A.r = 1.0f;
     
+    Sphere B;
+    B.r = 1.0f;
     
+	Collider_Rect rect_A, rect_B;
+	rect_A.r[0] = 0.4f;
+	rect_A.r[1] = 0.6f;
+	
+	rect_B.r[0] = 0.2f;
+	rect_B.r[1] = 0.8f;
+	
+	
+	stringstream console_log_buffer;
+	streambuf *old = cout.rdbuf(console_log_buffer.rdbuf());
 	while (!quit) {
 		if (isFog) glEnable(GL_FOG);
 		else glDisable(GL_FOG);
@@ -534,6 +547,8 @@ int main(int argc, char* argv[])
         
 		process_input();
         
+		update_mover(2.0f, input_state, time_state);
+		
 		mouse_delta3d_current = p_near;
 		int x, y;
 		SDL_GetMouseState(&x, &y);
@@ -554,24 +569,50 @@ int main(int argc, char* argv[])
 		vec3 closest_p = p_near + p_dir_n;
         
         
+        A.p = vec3(1.0, 2.0, 0.0f);
+        B.p = tomato.t.position();
+        A.r = 1;
+        //stars
+		
+		rect_B.origin = mover.v;
+		rect_A.origin = vec3_zero;
+		
+		
+		draw_rect(&default_shader, rect_A.origin, rect_A.r[0], rect_A.r[1], vec3(1), 0, 1.0f, RED, &camera, true);
+		
+		draw_rect(&default_shader, rect_B.origin, rect_B.r[0], rect_B.r[1], vec3(1), 0, 1.0f, RED, &camera, true);
+        //draw_sphere(16, &default_shader, &camera, vec4(1.0f, 1.0f, 0.0f, 1.0f), vec3_zero, false, true, 60.0f);
         
+		if(resolve_rect_collisions(rect_A, rect_B))
+		{
+			draw_rect(&default_shader, rect_A.origin, rect_A.r[0], rect_A.r[1], vec3(1), 0, 1.0f, GREEN, &camera, true);
+		} 
         
+        draw_sphere(circle_num, &default_shader, &camera, vec4(0.2f, 0.5f, 0.8f, 0.5f), A.p, fill_circle, true, A.r);
         
-        //NOTE: since acceleration formula is a = F * m/s * m/s (m/s squared).
-        //force is 
+        //draw_sphere(circle_num, &default_shader, &camera, vec4(0.2f, 0.8f, 0.1f, 0.5f), B.p, fill_circle, true, B.r);
         
+		draw_icosahedron(circle_num, &default_shader, &camera, vec4(0.2f, 0.5f, 0.8f, 0.5f), vec3_right + -vec3_up, fill_circle, true, A.r);
         
+        if(resolve_sphere_collisions(A, B)) debug_point(B.p, RED + GREEN, 100, &default_shader);
         
-        vec3 force = vec3(0, gravity, 0) * tomato.mass;
-        tomato.acceleration = 1.0f/tomato.mass * tomato.force + force * time_state.dt * time_state.dt * 0.5f;
+		Ray_Info ray_info;
+		cast_ray(A, ray_info, vec3_zero, input_state.mouse_w, 5.0f);
+		
+        
+		//NOTE: since acceleration formula is a = F * m/s * m/s (m/s squared).
+		//force is 
+        
+		vec3 force = vec3(0, gravity, 0) * 1.0f/tomato.mass;
+        tomato.acceleration =  1.0f/tomato.mass * tomato.force + force * time_state.dt * time_state.dt * 0.5f;
         tomato.velocity += tomato.acceleration;
         //tomato.velocity * 0.2f;
-        tomato.pos += tomato.velocity;
+        tomato.t.translate(tomato.velocity);
         tomato.force = vec3_zero;
         c_cur = camera.pos;
         
-		c_velocity = c_dt * time_state.dt;
-		
+        c_velocity = c_dt * time_state.dt;
+        
         c_force = 1.0f * c_velocity;
         
         for(int i = 0; i < bullets.size(); i++)
@@ -582,48 +623,48 @@ int main(int argc, char* argv[])
         
         if(input_state.k_r)
         {
-            tomato.pos = vec3(0, 4, 0);
+            tomato.t.set_position(vec3(0, 4, 0));
             tomato.velocity = {};
             //camera.pos = vec3_up;
         }
         
-		if (input_state.k_space)
-		{
-			f_g += vec3(0, 0.5f, 0);
-			input_state.k_space = false;
-		}
+        if (input_state.k_space)
+        {
+            f_g += vec3(0, 0.5f, 0);
+            input_state.k_space = false;
+        }
         
-		vec2 hwin = { display_info.w / 2, display_info.h / 2 };
+        vec2 hwin = { display_info.w / 2, display_info.h / 2 };
         
-		float dt = time_state.dt;
-		vec2 mdt = vec2(input_state.mouse_dt2.x, input_state.mouse_dt2.y);
+        float dt = time_state.dt;
+        vec2 mdt = vec2(input_state.mouse_dt2.x, input_state.mouse_dt2.y);
         
-		if (camera.view_mode == CMODE_FREE)
-		{
-			if (camera.mouse_look)
-			{
-				camera_update_rotation(&camera, &mdt, false);
-			}
-			camera_update_translation(&camera, &input_state, dt);
-			camera_look_at(&camera, camera.pos, camera.pos + camera.forward);
-		}
-		else if (camera.view_mode == CMODE_ORBIT)
-		{
-			camera_look_at(&camera, camera.forward * 3.f, vec3_zero);
-			if (input_state.m_middle)
-			{
-				camera_update_rotation(&camera, &mdt, true);
-			}
-		}
+        if (camera.view_mode == CMODE_FREE)
+        {
+            if (camera.mouse_look)
+            {
+                camera_update_rotation(&camera, &mdt, false);
+            }
+            camera_update_translation(&camera, &input_state, dt);
+            camera_look_at(&camera, camera.pos, camera.pos + camera.forward);
+        }
+        else if (camera.view_mode == CMODE_ORBIT)
+        {
+            camera_look_at(&camera, camera.forward * 3.f, vec3_zero);
+            if (input_state.m_middle)
+            {
+                camera_update_rotation(&camera, &mdt, true);
+            }
+        }
         else if(camera.view_mode == CMODE_ORTHOGRAPHIC)
         {
             if (camera.mouse_look)
-			{
-				camera_update_rotation(&camera, &mdt, false);
-			}
-			camera_update_translation(&camera, &input_state, dt);
+            {
+                camera_update_rotation(&camera, &mdt, false);
+            }
+            camera_update_translation(&camera, &input_state, dt);
             
-			camera_look_at(&camera, camera.pos, camera.pos + camera.forward);
+            camera_look_at(&camera, camera.pos, camera.pos + camera.forward);
         }
         
         if(camera.view_mode == CMODE_ORTHOGRAPHIC){
@@ -640,34 +681,34 @@ int main(int argc, char* argv[])
         
         
         jmodel.line_color = vec3(0.2f, 1.0f, 0.2f);
-		jmodel.translate(jmodel.local_position);
-		jmodel.uniformScale(1.0f);
+        jmodel.translate(jmodel.local_position);
+        jmodel.uniformScale(1.0f);
         
-		vec3 p;
-		p.x = sinf(time_state.seconds_passed);
-		p.y = cosf(time_state.seconds_passed);
-		p.z = cosf(time_state.seconds_passed);
+        vec3 p;
+        p.x = sinf(time_state.seconds_passed);
+        p.y = cosf(time_state.seconds_passed);
+        p.z = cosf(time_state.seconds_passed);
         
-		p *= 1.0f;
-		debug_point(p, RED + GREEN, 10, &default_shader);
-		vec3 d = input_state.mouse_w - sphere.get_pos();
-		//sphere.add_pos(normalize(input_state.mouse_w) * speed * time_state.dt);
-		sphere.look_at(d);
-		
+        p *= 1.0f;
+        debug_point(p, RED + GREEN, 10, &default_shader);
+        vec3 d = input_state.mouse_w - sphere.get_pos();
+        //sphere.add_pos(normalize(input_state.mouse_w) * speed * time_state.dt);
+        sphere.look_at(d);
         
-		//nlohmann_loop(jbeam_d, input_state);
-		rapidjson_loop(document, input_state);
         
-		
+        //nlohmann_loop(jbeam_d, input_state);
+        //rapidjson_loop(document, input_state);
+        
+        
         vec3 v;
-        if(tomato.pos.y <= -2.0f)
+        if(tomato.t.position().y <= -2.0f)
         {
             vec3 dir = normalize(tomato.velocity);
             vec3 nr = vec3(0, 1.0f, 0);
             float l = dot(dir, nr);
             vec3 r = -2*l*nr + dir;
             vec3 n = normalize(r);
-            tomato.pos.y += -2.0 - tomato.pos.y;
+            tomato.t.translate(vec3(0, -2.0 - tomato.t.position().y, 0));
             v = n * (0.4f * length(tomato.velocity)); 
             tomato.velocity = v;
             //tomato.add_force(vec3(16.0f, 0, 0.9f));
@@ -676,20 +717,19 @@ int main(int argc, char* argv[])
             
         }
         
+        float dist = distance(input_state.mouse_w, vec3(tomato.t.position().x, tomato.t.position().y, 0));
         
-		float dist = distance(input_state.mouse_w, vec3(tomato.pos.x, tomato.pos.y, 0));
-		
-		if (dist < 1.0f  && input_state.m_left)
-		{
+        if (dist < 1.0f  && input_state.m_left)
+        {
             
-			ss = true;
-		}
-		if (ss)
-		{
+            ss = true;
+        }
+        if (ss)
+        {
             tomato.add_force(vec3(input_state.mouse_dt2.x, -input_state.mouse_dt2.y, 0) * 0.001f);
-			if (!input_state.m_left) ss = false;
-		}
-        if(dist < 1.0f) draw_quad(&default_shader, tomato.pos, vec3_up, 0, 1.0f, GREEN, &camera, true);
+            if (!input_state.m_left) ss = false;
+        }
+        //if(dist < 1.0f) draw_quad(&default_shader, tomato.t.position(), vec3_up, 0, 1.0f, GREEN, &camera, true);
         
         float strength = 2.0f;
         if(input_state.a_up) tomato.add_force(vec3(0, 1.0f, 0)* strength);
@@ -703,10 +743,10 @@ int main(int argc, char* argv[])
         static float delay;
         if(time_state.seconds_passed > delay + 0.5f && input_state.m_left){
             RigidBody t;
-            t.pos = tomato.pos;
+            t.t.position() = tomato.t.position();
             t.acceleration = {};
-            t.mass = 20.0f;
-            t.add_force(normalize(vec3(input_state.mouse_w.x, input_state.mouse_w.y, 0.0f) - tomato.pos) * 10.5f);
+            t.mass = 8.0f;
+            t.add_force(camera.forward * 100.5f);
             bullets.push_back(t);
             delay = time_state.seconds_passed;
         }
@@ -719,294 +759,299 @@ int main(int argc, char* argv[])
         
         
         resolve_collisions(bullets);
-        
-		kpl_draw_texture(texture_info, tomato.pos, vec3(1, 1, 1), show_outline, is_billboard);
+        /*
+        kpl_draw_texture(texture_info, tomato.t.position(), vec3(1, 1, 1), show_outline, is_billboard);
+        */
         
         for(int i = 0; i < bullets.size(); i++)
         {
-            kpl_draw_texture(texture_info, bullets[i].pos, vec3(1.0f, 1.0f, 1.0f), show_outline, is_billboard);
+            /*
+            kpl_draw_texture(texture_info, bullets[i].t.position(), vec3(1.0f, 1.0f, 1.0f), show_outline, is_billboard); */
+            draw_sphere(circle_num, &default_shader, &camera, vec4(0.7f, 0.2f, 0.8f, 0.5f), bullets[i].t.position(), fill_circle, true, 1.0f);
         }
         
         
-		debug_line(tomato.pos, tomato.pos + tomato.velocity * 10000.0f, BLUE + GREEN, &default_shader, &camera);
+        debug_line(tomato.t.position(), tomato.t.position() + tomato.velocity * 10000.0f, BLUE + GREEN, &default_shader, &camera);
         
-        debug_line(tomato.pos, input_state.mouse_w - tomato.pos, BLUE + RED, &default_shader, &camera);
+        //debug_line(tomato.t.position(), input_state.mouse_w - tomato.t.position(), BLUE + RED, &default_shader, &camera);
         
-		debug_point(tomato.pos, BLUE, 8, &default_shader);
-		
-		for (int y = -circle_width; y <= circle_width; y++)
-		{
-			for (int x = -circle_width; x <= circle_width; x++)
-			{
-				if (x*x + y * y <= circle_width * circle_width)
-				{
-					debug_point(vec3(x, y, 0), RED + GREEN, 10, &default_shader);
-				}
-			}
-		}
-		
+        debug_point(tomato.t.position(), BLUE, 8, &default_shader);
         
+        for (int y = -circle_width; y <= circle_width; y++)
+        {
+            for (int x = -circle_width; x <= circle_width; x++)
+            {
+                if (x*x + y * y <= circle_width * circle_width)
+                {
+                    debug_point(vec3(x, y, 0), RED + GREEN, 10, &default_shader);
+                }
+            }
+        }
+        
+        /*
         for(int i = 0; i < circle_num; i++)
         {
-            draw_circle(circle_num, &default_shader, &camera, TRAN, p*(i*2.0f), fill_circle, 0.5f);
+             draw_circle(circle_num, &default_shader, &camera, TRAN, p*(i*2.0f), fill_circle, 0.5f);
+        }*/
+        
+        p_near = get_mouse_3d(0.0, camera);
+        p_far = get_mouse_3d(1.0, camera);
+        input_state.p_near = p_near;
+        input_state.p_far = p_far;
+        
+        int gl_error = glGetError();
+        gl_error = glGetError();
+        
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplSDL2_NewFrame(mainWindow);
+        ImGui::NewFrame();
+        
+        for (int i = 0; i < circle_precision; i++)
+        {
+            vec3 ps = input_state.mouse_w;
+            ps.x += cosf(i) * circle_width;
+            ps.y += sinf(i) * circle_width;
+            //ps.z += p.x + p.y * 0.01f;
+            debug_point(ps, vec4(ps.x, ps.y, 0.0f, 1.0f), 5, &default_shader);
         }
+		
         
-		p_near = get_mouse_3d(0.0, camera);
-		p_far = get_mouse_3d(1.0, camera);
-		input_state.p_near = p_near;
-		input_state.p_far = p_far;
-        
-		int gl_error = glGetError();
-		gl_error = glGetError();
-        
-		ImGui_ImplOpenGL3_NewFrame();
-		ImGui_ImplSDL2_NewFrame(mainWindow);
-		ImGui::NewFrame();
-        
-		lines_to_render.p.insert(lines_to_render.p.end(), selected_lines_to_render.p.begin(), selected_lines_to_render.p.end());
-		lines_to_render.color.insert(lines_to_render.color.end(), selected_lines_to_render.color.begin(), selected_lines_to_render.color.end());
-        
-		points_to_render.p.insert(points_to_render.p.end(), selected_points_to_render.p.begin(), selected_points_to_render.p.end());
-		points_to_render.color.insert(points_to_render.color.end(), selected_points_to_render.color.begin(), selected_points_to_render.color.end());
-		render_line_group(lines_to_render, &default_shader, &camera);
-		render_point_group(points_to_render, &default_shader, &camera);
-		selected_lines_to_render = {};
-		selected_points_to_render = {};
-        
-		for (int i = 0; i < circle_precision; i++)
-		{
-			vec3 ps = input_state.mouse_w;
-			ps.x += cosf(i) * circle_width;
-			ps.y += sinf(i) * circle_width;
-			//ps.z += p.x + p.y * 0.01f;
-			debug_point(ps, vec4(ps.x, ps.y, 0.0f, 1.0f), 5, &default_shader);
-		}
-        
-		if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
-		{
-			static float f = 0.0f;
-			static int counter = 0;
+		
+        if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
+        {
+            static float f = 0.0f;
+            static int counter = 0;
             
-			ImGui::SetNextWindowSize(ImVec2(320, 480));
-			ImGui::SetNextWindowSizeConstraints(ImVec2(320, 480), ImVec2(display_info.w, display_info.h));
+            ImGui::SetNextWindowSize(ImVec2(480, 640));
+            ImGui::SetNextWindowSizeConstraints(ImVec2(480, 640), ImVec2(display_info.w, display_info.h));
             
-			ImGui::Begin("Properties");                          // Create a window called "Hello, world!" and append into it.
+            ImGui::Begin("Properties");                          // Create a window called "Hello, world!" and append into it.
             
-			if (ImGui::BeginMainMenuBar())
-			{
-				if (ImGui::BeginMenu("Options"))
-				{
-					static int id = 0;
-					static int last_id;
-					ImGui::Combo("Display mode", &id, "Fullscreen\0Windowed fullscreen\0Windowed\0\0");
-					if (id == 0) display_info.mode_id = SDL_WINDOW_FULLSCREEN; //windowed
-					else if (id == 1) display_info.mode_id = SDL_WINDOW_FULLSCREEN_DESKTOP; //fullscreen
-					else if (id == 2) display_info.mode_id = 0;
-					if (last_id != id)
-					{
-						SDL_SetWindowFullscreen(mainWindow, display_info.mode_id);
-						/*SDL_DisplayMode mode;
-      SDL_GetCurrentDisplayMode(0, &mode);
-      
-      display_info.w = mode.w;
-      display_info.h = mode.h;*/
-						//SDL_SetWindowSize(mainWindow, display_info.w, display_info.h);
-					}
-					last_id = id;
-					if (ImGui::MenuItem("Show debug text")) { show_text = !show_text; }
-					if (ImGui::MenuItem("Quit", "Alt+F4")) { quit = true; }
-					ImGui::EndMenu();
-				}
-				ImGui::EndMainMenuBar();
-			}
+            if (ImGui::BeginMainMenuBar())
+            {
+                if (ImGui::BeginMenu("Options"))
+                {
+                    static int id = 0;
+                    static int last_id;
+                    ImGui::Combo("Display mode", &id, "Fullscreen\0Windowed fullscreen\0Windowed\0\0");
+                    if (id == 0) display_info.mode_id = SDL_WINDOW_FULLSCREEN; //windowed
+                    else if (id == 1) display_info.mode_id = SDL_WINDOW_FULLSCREEN_DESKTOP; //fullscreen
+                    else if (id == 2) display_info.mode_id = 0;
+                    if (last_id != id)
+                    {
+                        SDL_SetWindowFullscreen(mainWindow, display_info.mode_id);
+                        /*SDL_DisplayMode mode;
+                        SDL_GetCurrentDisplayMode(0, &mode);
+                        
+                        display_info.w = mode.w;
+                        display_info.h = mode.h;*/
+                        //SDL_SetWindowSize(mainWindow, display_info.w, display_info.h);
+                    }
+                    last_id = id;
+                    if (ImGui::MenuItem("Show debug text")) { show_text = !show_text; }
+                    if (ImGui::MenuItem("Quit", "Alt+F4")) { quit = true; }
+                    ImGui::EndMenu();
+                }
+                ImGui::EndMainMenuBar();
+            }
             
-			// Display some text (you can use a format strings too)
-			ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
-			ImGui::Checkbox("Another Window", &show_another_window);
+            // Display some text (you can use a format strings too)
+            ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
+            ImGui::Checkbox("Another Window", &show_another_window);
             
-			ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f    
-			ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
-			ImGui::SliderFloat("offset ratio", &offset_ratio, 0.1f, 1.0f, "%.3f");
-			ImGui::Checkbox("show outline", &show_outline);
-			ImGui::Checkbox("is billboard", &is_billboard);
-			ImGui::SliderInt("circle_precision", &circle_precision, 4, 720, "%d");
-			ImGui::SliderFloat("circle_width", &circle_width, 0.1f, 32.0f, "%.3f");
-			ImGui::SliderFloat("mass", &tomato.mass, 0.1f, 128.0f, "%.4f");
-			ImGui::SliderFloat("gravity", &gravity, -10.0f, 10.0f, "%.4f");
+            ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f    
+            ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
+            ImGui::SliderFloat("offset ratio", &offset_ratio, 0.1f, 1.0f, "%.3f");
+            ImGui::Checkbox("show outline", &show_outline);
+            ImGui::Checkbox("is billboard", &is_billboard);
+            ImGui::SliderInt("circle_precision", &circle_precision, 4, 720, "%d");
+            ImGui::SliderFloat("circle_width", &circle_width, 0.1f, 32.0f, "%.3f");
+            ImGui::SliderFloat("mass", &tomato.mass, 0.1f, 128.0f, "%.4f");
+            ImGui::SliderFloat("gravity", &gravity, -10.0f, 10.0f, "%.4f");
             ImGui::Checkbox("fill circle", &fill_circle);
             ImGui::SliderInt("circle_num", &circle_num, 4, 720, "%d");
             
-			if (ImGui::TreeNode("Debug information"))
-			{
-				ImGui::Text("camera.f() = %.3f, %.3f, %.3f", camera.f().x, camera.f().y, camera.f().z);
-				ImGui::Text("camera.pos = %.3f, %.3f, %.3f", camera.pos.x, camera.pos.y, camera.pos.z);
-				ImGui::Text("sphere.f = %.3f, %.3f, %.3f", sphere.get_f().x, sphere.get_f().y, sphere.get_f().z);
-				ImGui::Text("sphere.r = %.3f, %.3f, %.3f", sphere.get_r().x, sphere.get_r().y, sphere.get_r().z);
-				ImGui::Text("sphere.u = %.3f, %.3f, %.3f", sphere.get_u().x, sphere.get_u().y, sphere.get_u().z);
-				ImGui::Text("camera dt = %.3f, %.3f, %.3f", c_dt.x, c_dt.y, c_dt.z);
-				ImGui::Text("camera velocity = %.3f, %.3f, %.3f", c_velocity.x, c_velocity.y, c_velocity.z);
+            if (ImGui::TreeNode("Debug information"))
+            {
+                ImGui::Text("camera.f() = %.3f, %.3f, %.3f", camera.f().x, camera.f().y, camera.f().z);
+                ImGui::Text("camera.pos = %.3f, %.3f, %.3f", camera.pos.x, camera.pos.y, camera.pos.z);
+                ImGui::Text("sphere.f = %.3f, %.3f, %.3f", sphere.get_f().x, sphere.get_f().y, sphere.get_f().z);
+                ImGui::Text("sphere.r = %.3f, %.3f, %.3f", sphere.get_r().x, sphere.get_r().y, sphere.get_r().z);
+                ImGui::Text("sphere.u = %.3f, %.3f, %.3f", sphere.get_u().x, sphere.get_u().y, sphere.get_u().z);
+                ImGui::Text("camera dt = %.3f, %.3f, %.3f", c_dt.x, c_dt.y, c_dt.z);
+                ImGui::Text("camera velocity = %.3f, %.3f, %.3f", c_velocity.x, c_velocity.y, c_velocity.z);
                 ImGui::Text("camera view mode = %d", camera.view_mode);
-				ImGui::Text("camera force = %.3f, %.3f, %.3f", c_force.x, c_force.y, c_force.z);
-				ImGui::Text("f_g = %.3f, %.3f, %.3f", f_g.x, f_g.y, f_g.z);
-				ImGui::Text("contact point f = %.3f, %.3f, %.3f", cp_f);
+                ImGui::Text("camera force = %.3f, %.3f, %.3f", c_force.x, c_force.y, c_force.z);
+                ImGui::Text("f_g = %.3f, %.3f, %.3f", f_g.x, f_g.y, f_g.z);
+                ImGui::Text("contact point f = %.3f, %.3f, %.3f", cp_f);
                 
                 ImGui::Text("tomato.acceleration = %.3f, %.3f, %.3f", tomato.acceleration.x, tomato.acceleration.y, tomato.acceleration.z);
                 
                 ImGui::Text("tomato.force = %.3f, %.3f, %.3f", tomato.force.x, tomato.force.y, tomato.force.z);
-                ImGui::Text("tomato.pos = %.3f, %.3f, %.3f", tomato.pos.x, tomato.pos.y, tomato.pos.z);
+                ImGui::Text("tomato.pos = %.3f, %.3f, %.3f", tomato.t.position().x, tomato.t.position().y, tomato.t.position().z);
                 
-				ImGui::Text("dist = %.3f", dist);
-				
-				ImGui::Text("tomato.velocity = %.3f, %.3f, %.3f", tomato.velocity.x, tomato.velocity.y, tomato.velocity.z);
+                ImGui::Text("dist = %.3f", dist);
                 
-				ImGui::Text("input_state.move_dt = %.3f, %.3f, %.3f", input_state.move_dt.x, input_state.move_dt.y, input_state.move_dt.z);
-				ImGui::Text("mouse_world = %.3f, %.3f, %.3f", input_state.mouse_w.x, input_state.mouse_w.y, input_state.mouse_w.z);
-				ImGui::Text("time_state.seconds_passed: %.3f", time_state.seconds_passed);
-				ImGui::Text("time_state.fps: %.3f", time_state.fps);
-				ImGui::Text("mouse_mode_switch: %d", mouse_mode_switch);
-				ImGui::Text("input_state.m_left: %d", input_state.m_left);
-				ImGui::Text("was_pressed: %d", was_pressed);
-				ImGui::Text("input_state.lshift: %d", input_state.lshift);
-				ImGui::Text("beam_window.ishowered: %d", beam_debug_window_howered);
-				ImGui::Text("node_debug_window_howered: %d", node_debug_window_howered);
+                ImGui::Text("tomato.velocity = %.3f, %.3f, %.3f", tomato.velocity.x, tomato.velocity.y, tomato.velocity.z);
                 
-				//ImGui::Text("o + camera.f() = %.3f, %.3f, %.3f", o.x, o.y, o.z);
+                ImGui::Text("input_state.move_dt = %.3f, %.3f, %.3f", input_state.move_dt.x, input_state.move_dt.y, input_state.move_dt.z);
+                ImGui::Text("mouse_world = %.3f, %.3f, %.3f", input_state.mouse_w.x, input_state.mouse_w.y, input_state.mouse_w.z);
+                ImGui::Text("time_state.seconds_passed: %.3f", time_state.seconds_passed);
+                ImGui::Text("time_state.fps: %.3f", time_state.fps);
+                ImGui::Text("mouse_mode_switch: %d", mouse_mode_switch);
+                ImGui::Text("input_state.m_left: %d", input_state.m_left);
+                ImGui::Text("was_pressed: %d", was_pressed);
+                ImGui::Text("input_state.lshift: %d", input_state.lshift);
+                ImGui::Text("beam_window.ishowered: %d", beam_debug_window_howered);
+                ImGui::Text("node_debug_window_howered: %d", node_debug_window_howered);
+                
+                //ImGui::Text("o + camera.f() = %.3f, %.3f, %.3f", o.x, o.y, o.z);
                 
                 
-				ImGui::Text("p_near = %.3f, %.3f, %.3f", p_near.x, p_near.y, p_near.z);
-				ImGui::Text("mouse delta = %.3f, %.3f, %.3f", mouse_delta2d.x, mouse_delta2d.y);
-				ImGui::Text("mousepos = %d, %d", input_state.mouse.x, input_state.mouse.y);
-				ImGui::Text("camera pitch yaw = %d, %d", camera.pitch, camera.yaw);
-				ImGui::Text("x, y, z = %.3f, %.3f, %.3f", camera.pos.x, camera.pos.y, camera.pos.z);
+                ImGui::Text("p_near = %.3f, %.3f, %.3f", p_near.x, p_near.y, p_near.z);
+                ImGui::Text("mouse delta = %.3f, %.3f, %.3f", mouse_delta2d.x, mouse_delta2d.y);
+                ImGui::Text("mousepos = %d, %d", input_state.mouse.x, input_state.mouse.y);
+                ImGui::Text("camera pitch yaw = %d, %d", camera.pitch, camera.yaw);
+                ImGui::Text("x, y, z = %.3f, %.3f, %.3f", camera.pos.x, camera.pos.y, camera.pos.z);
                 
-				ImGui::Text("counter = %d", counter);
+                ImGui::Text("counter = %d", counter);
                 
-				ImGui::Text("state = %d", input_state.a_right);
-				ImGui::Text("mouse_mode_switch = %d", mouse_mode_switch);
+                ImGui::Text("state = %d", input_state.a_right);
+                ImGui::Text("mouse_mode_switch = %d", mouse_mode_switch);
                 
-				ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-				ImGui::TreePop();
-			}
+                ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+                ImGui::TreePop();
+            }
             
-			if (ImGui::TreeNode("Beam information"))
-			{
-				ImGui::Text("Without border:");
-				ImGui::Columns(3, "mycolumns3", false);  // 3-ways, no border
-				ImGui::Separator();
-				for (int n = 0; n < 14; n++)
-				{
-					char label[32];
-					sprintf(label, "Item %d", n);
-					if (ImGui::Selectable(label)) {}
-					//if (ImGui::Button(label, ImVec2(-1,0))) {}
-					ImGui::NextColumn();
-				}
-				ImGui::Columns(1);
-				ImGui::Separator();
+            if (ImGui::TreeNode("Beam information"))
+            {
+                ImGui::Text("Without border:");
+                ImGui::Columns(3, "mycolumns3", false);  // 3-ways, no border
+                ImGui::Separator();
+                for (int n = 0; n < 14; n++)
+                {
+                    char label[32];
+                    sprintf(label, "Item %d", n);
+                    if (ImGui::Selectable(label)) {}
+                    //if (ImGui::Button(label, ImVec2(-1,0))) {}
+                    ImGui::NextColumn();
+                }
+                ImGui::Columns(1);
+                ImGui::Separator();
                 
-				ImGui::Text("With border:");
-				ImGui::Columns(4, "mycolumns"); // 4-ways, with border
-				ImGui::Separator();
-				//ImGui::Text(to_string(beam->id).c_str()); ImGui::NextColumn();
-				//ImGui::Text("Node a ID: " + (char)beam->a->id.c_str()); ImGui::NextColumn();
-				//ImGui::Text("Node b ID: " + (char)beam->b->id.c_str()); ImGui::NextColumn();
-				ImGui::Text(""); ImGui::NextColumn();
-				ImGui::Text("Hovered"); ImGui::NextColumn();
-				ImGui::Text("Hovered"); ImGui::NextColumn();
+                ImGui::Text("With border:");
+                ImGui::Columns(4, "mycolumns"); // 4-ways, with border
+                ImGui::Separator();
+                //ImGui::Text(to_string(beam->id).c_str()); ImGui::NextColumn();
+                //ImGui::Text("Node a ID: " + (char)beam->a->id.c_str()); ImGui::NextColumn();
+                //ImGui::Text("Node b ID: " + (char)beam->b->id.c_str()); ImGui::NextColumn();
+                ImGui::Text(""); ImGui::NextColumn();
+                ImGui::Text("Hovered"); ImGui::NextColumn();
+                ImGui::Text("Hovered"); ImGui::NextColumn();
                 
-				ImGui::Separator();
-				const char* names[3] = { "One", "Two", "Three" };
-				const char* paths[3] = { "/path/one", "/path/two", "/path/three" };
-				static int selected = -1;
-				for (int i = 0; i < 3; i++)
-				{
-					char label[32];
-					sprintf(label, "%04d", i);
-					if (ImGui::Selectable(label, selected == i, ImGuiSelectableFlags_SpanAllColumns))
-						selected = i;
-					bool hovered = ImGui::IsItemHovered();
-					ImGui::NextColumn();
-					ImGui::Text(names[i]); ImGui::NextColumn();
-					ImGui::Text(paths[i]); ImGui::NextColumn();
-					ImGui::Text("%d", hovered); ImGui::NextColumn();
-				}
-				ImGui::Columns(1);
-				ImGui::Separator();
-				ImGui::TreePop();
-			}
+                ImGui::Separator();
+                const char* names[3] = { "One", "Two", "Three" };
+                const char* paths[3] = { "/path/one", "/path/two", "/path/three" };
+                static int selected = -1;
+                for (int i = 0; i < 3; i++)
+                {
+                    char label[32];
+                    sprintf(label, "%04d", i);
+                    if (ImGui::Selectable(label, selected == i, ImGuiSelectableFlags_SpanAllColumns))
+                        selected = i;
+                    bool hovered = ImGui::IsItemHovered();
+                    ImGui::NextColumn();
+                    ImGui::Text(names[i]); ImGui::NextColumn();
+                    ImGui::Text(paths[i]); ImGui::NextColumn();
+                    ImGui::Text("%d", hovered); ImGui::NextColumn();
+                }
+                ImGui::Columns(1);
+                ImGui::Separator();
+                ImGui::TreePop();
+            }
+			
+			static bool read_only = false;
+			string console_log_text = console_log_buffer.str();
+			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0,0));
+			ImGui::Checkbox("Read-only", &read_only);
+			ImGui::PopStyleVar();
+			ImGui::InputTextMultiline("##source", (char*)console_log_text.c_str(), IM_ARRAYSIZE((char*)console_log_text.c_str()), ImVec2(-1.0f, ImGui::GetTextLineHeight() * 16), ImGuiInputTextFlags_AllowTabInput | (read_only ? ImGuiInputTextFlags_ReadOnly : 0));
+			console_log_buffer.str(" ");
+			
+            ImGui::End();
+        }
+        
+        // 3. Show another simple window.
+        if (show_another_window)
+        {
+            ImGui::Begin("Another Window", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
+            ImGui::Text("Hello from another window!");
+            if (ImGui::Button("Close Me"))
+                show_another_window = false;
+			
+            ImGui::End();
+        }
+        
+        // Rendering
+        ImGui::Render();
+        
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        
+        
+        if (mouse_look)
+        {
+            mouse_dt = mouse_dt_current - mouse_dt_last;
+            mouse_dt_last = mouse_dt_current;
+            input_state.mouse_dt2 = mouse_dt;
+            //@kepler setting mouse coordinates directly might cause problems later on?
             
-			ImGui::End();
-		}
-        
-		// 3. Show another simple window.
-		if (show_another_window)
-		{
-			ImGui::Begin("Another Window", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-			ImGui::Text("Hello from another window!");
-			if (ImGui::Button("Close Me"))
-				show_another_window = false;
-			ImGui::End();
-		}
-        
-		// Rendering
-		ImGui::Render();
-        
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-        
-        
-		if (mouse_look)
-		{
-			mouse_dt = mouse_dt_current - mouse_dt_last;
-			mouse_dt_last = mouse_dt_current;
-			input_state.mouse_dt2 = mouse_dt;
-			//@kepler setting mouse coordinates directly might cause problems later on?
+            //SDL_WarpMouseInWindow(mainWindow, hwin.x, hwin.y);
+            //if (mouse_mode_switch) input_state.mouse_dt2 = vec2_zero;
+        }
+        else
+        {
+            mouse_delta2d = mouse_delta2d_current - mouse_delta2d_last;
+            mouse_dt3 = mouse_delta3d_current - mouse_delta3d_last;
             
-			//SDL_WarpMouseInWindow(mainWindow, hwin.x, hwin.y);
-			//if (mouse_mode_switch) input_state.mouse_dt2 = vec2_zero;
-		}
-		else
-		{
-			mouse_delta2d = mouse_delta2d_current - mouse_delta2d_last;
-			mouse_dt3 = mouse_delta3d_current - mouse_delta3d_last;
-            
-			input_state.mouse_dt2 = mouse_delta2d;
-			mouse_delta2d_last = mouse_delta2d_current;
-			mouse_delta3d_last = mouse_delta3d_current;
-		}
-		//wait till mouse warps to the center, to avoid camera snapping. (Window system events can take longer than one frame)
-		if (mouse_mode_switch && input_state.mouse.x == hwin.x && input_state.mouse.y == hwin.y) mouse_mode_switch = false;
+            input_state.mouse_dt2 = mouse_delta2d;
+            mouse_delta2d_last = mouse_delta2d_current;
+            mouse_delta3d_last = mouse_delta3d_current;
+        }
+        //wait till mouse warps to the center, to avoid camera snapping. (Window system events can take longer than one frame)
+        if (mouse_mode_switch && input_state.mouse.x == hwin.x && input_state.mouse.y == hwin.y) mouse_mode_switch = false;
         
-		was_pressed = input_state.m_left;
-		input_state.k_delete = false;
-		input_state.k_enter = false;
+		pressed = input_state.a_left;
+        was_pressed = input_state.m_left;
+        input_state.k_delete = false;
+        input_state.k_enter = false;
         
         //tomato.velocity = tomato.vl - tomato.vc;
         //tomato.vl = tomato.vc;
         
-		input_state.mouse_dt3 = mouse_dt3;
+        input_state.mouse_dt3 = mouse_dt3;
         
-		input_state.mouse_w = mouse_position(&camera);
+        input_state.mouse_w = mouse_position(&camera);
         
-		translation_delta = translation_delta_current - translation_delta_last;
+        translation_delta = translation_delta_current - translation_delta_last;
         
-		c_dt = c_cur - c_last;
-		c_last = c_cur;
+        c_dt = c_cur - c_last;
+        c_last = c_cur;
         
-		translation_delta_last = translation_delta_current;
+        translation_delta_last = translation_delta_current;
         
-		LARGE_INTEGER tick_after_loop;
-		QueryPerformanceCounter(&tick_after_loop);
-		Sleep(1);
-		__int64 interval = tick_after_loop.QuadPart - tick_before_loop.QuadPart;
-		float seconds_passed = (float)interval * second_per_tick;
+        LARGE_INTEGER tick_after_loop;
+        QueryPerformanceCounter(&tick_after_loop);
+        Sleep(1);
+        __int64 interval = tick_after_loop.QuadPart - tick_before_loop.QuadPart;
+        float seconds_passed = (float)interval * second_per_tick;
         
-		time_state.seconds_passed += seconds_passed;
-		time_state.dt = interval * second_per_tick;
-		tick_before_loop = tick_after_loop;
-		SDL_GL_SwapWindow(mainWindow);
-	}
-	SDL_GL_DeleteContext(glContext);
-	SDL_DestroyWindow(mainWindow);
-	SDL_Quit();
-	return 0;
+        time_state.seconds_passed += seconds_passed;
+        time_state.dt = interval * second_per_tick;
+        tick_before_loop = tick_after_loop;
+        SDL_GL_SwapWindow(mainWindow);
+    }
+    SDL_GL_DeleteContext(glContext);
+    SDL_DestroyWindow(mainWindow);
+    SDL_Quit();
+    return 0;
 }

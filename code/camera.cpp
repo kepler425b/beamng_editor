@@ -128,12 +128,12 @@ void camera_look_at(Camera *camera, vec3 origin, vec3 look)
 
 void camera_update_translation(Camera *camera, Input *input_state, float dt)
 {
-	camera->pos.y += input_state->a_up * -camera->speed * dt;
-	camera->pos.y += input_state->a_down * camera->speed * dt;
-	camera->pos += input_state->a_right * camera->speed * camera->right * dt;
-	camera->pos -= input_state->a_left * camera->speed * camera->right * dt;
-	camera->pos += input_state->a_forward * camera->speed * camera->forward *  dt;
-	camera->pos -= input_state->a_backward  * camera->speed * camera->forward * dt;
+	//camera->pos.y += input_state->k * -camera->speed * dt;
+	//camera->pos.y += input_state->k_down * camera->speed * dt;
+	camera->pos += input_state->k_right * camera->speed * camera->right * dt;
+	camera->pos -= input_state->k_left * camera->speed * camera->right * dt;
+	camera->pos += input_state->k_forward * camera->speed * camera->forward *  dt;
+	camera->pos -= input_state->k_backward  * camera->speed * camera->forward * dt;
 }
 
 void camera_translate(Camera *camera, vec3 direction, float amount)

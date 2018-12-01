@@ -1,8 +1,67 @@
 
+//TODO: need to figure a way to set, add and retrieve/access values of matrices
+//without getters and setters because it's annoying.
+
 struct Transform {
+    
 	mat4 r;
 	mat4 t;
 	mat4 m;
+    
+    void translate(vec3 d)
+    {
+        t[3][0] += d.x;
+        t[3][1] += d.y;
+        t[3][2] += d.z;
+    }
+    
+    void set_position(vec3 d)
+    {
+        t[3][0] = d.x;
+        t[3][1] = d.y;
+        t[3][2] = d.z;
+    }
+    
+    vec3 position()
+	{
+		return vec3(t[3][0], t[3][1], t[3][2]);
+	}
+    
+	vec3 forward()
+	{
+		return vec3(t[2][0], t[2][1], t[2][2]);
+	}
+    
+	vec3 up()
+	{
+		return vec3(t[1][0], t[1][1], t[1][2]);
+	}
+    
+	vec3 right()
+	{
+		return vec3(t[0][0], t[0][1], t[0][2]);
+	}
+    
+	void look_at(vec3 p)
+	{
+		vec3 forward = normalize(p);
+		vec3 right = normalize(cross(vec3_up, forward));
+		vec3 up = normalize(cross(forward, right));
+		t[0][0] = right.x;
+		t[1][0] = right.y;
+		t[2][0] = right.z;
+		t[0][1] = up.x;
+		t[1][1] = up.y;
+		t[2][1] = up.z;
+		t[0][2] = forward.x; 
+		t[1][2] = forward.y; 
+		t[2][2] = forward.z; 
+	}
+};
+
+struct Collider_Rect {
+	float r[3];
+	vec3 origin;
 };
 
 struct Time {
@@ -14,7 +73,7 @@ struct Time {
 
 struct RigidBody
 {
-    vec3 pos;
+    Transform t;
     vec3 velocity;
     vec3 acceleration;
     vec3 force;
@@ -26,21 +85,32 @@ struct RigidBody
     }
     void update_physics(Time &time_state)
     {
-        vec3 f = vec3(0, -9.8f, 0) * mass;
-        acceleration = 1.0f/mass * force + f * time_state.dt * time_state.dt * 0.5f;
+        vec3 g = vec3(0, -9.8f, 0) * mass;
+        acceleration = 1.0f/mass * force + g * time_state.dt * time_state.dt * 0.5f;
         velocity += acceleration;
         
-        pos += velocity;
+        t.translate(velocity);
         force = {};
     }
 };
 
+struct Sphere
+{
+    float r;
+    vec3 p;
+    
+    float area()
+    {
+        float result = r - p.x * p.x + r - p.y * p.y + r - p.z * p.z;
+        return result;
+    }
+};
 
 struct Input
 {
 	union
 	{
-		bool keys[13];
+		bool keys[18];
 		struct
 		{
 			bool m_left_click;
@@ -54,6 +124,11 @@ struct Input
 			bool a_forward;
 			bool a_backward;
 			bool lshift;
+            bool k_down;
+			bool k_left;
+			bool k_right;
+			bool k_forward;
+            bool k_backward;
 			bool k_delete;
 			bool k_enter;
 			bool k_space;
@@ -70,6 +145,23 @@ struct Input
 	vec3 p_near, p_far;
 	size_t kmod;
 };
+
+struct Mover {
+	vec3 v;
+	float x, y, z;
+};
+
+Mover mover;
+
+void update_mover(float speed, Input &i, Time &t)
+{
+	
+	if(i.a_up) mover.y += speed * t.dt;
+	if(i.a_down) mover.y -= speed * t.dt;
+	if(i.a_right) mover.x += speed * t.dt;
+	if(i.a_left) mover.y -= speed * t.dt;
+	mover.v += vec3(mover.x, mover.y, mover.z);
+}
 
 struct imgui_window_state {
 	bool node_window_howered;
@@ -163,3 +255,7 @@ struct Character {
 	glm::ivec2 Bearing;
 	GLuint     Advance;
 };
+
+
+static Input input_state = {};
+Time time_state = {};
