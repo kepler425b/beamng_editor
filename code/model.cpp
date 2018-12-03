@@ -6,7 +6,7 @@ struct Model {
 	Transform transform;
 	vec3 pos;
 	size_t vertices_size;
-	vec3 line_color;
+	shader material;
 	unsigned int index_buffer;
 	unsigned int vertex_buffer;
     

@@ -215,7 +215,7 @@ Model import_model(char *file)
                 // tinyobj::real_t red = attrib.colors[3*idx.vertex_index+0];
                 // tinyobj::real_t green = attrib.colors[3*idx.vertex_index+1];
                 // tinyobj::real_t blue = attrib.colors[3*idx.vertex_index+2];
-                model.vertices_data.push_back(vec3(vx, vy, vz));
+                //model.vertices_data.push_back(vec3(vx, vy, vz));
             }
             index_offset += fv;
             
@@ -223,6 +223,7 @@ Model import_model(char *file)
             shapes[s].mesh.material_ids[f];
         }
     }
+	
     model.init(attrib.vertices.size() / 3);
     
     for (int i = 0; i < shapes[0].mesh.indices.size(); i++)
@@ -230,6 +231,16 @@ Model import_model(char *file)
         model.indices.push_back(shapes[0].mesh.indices[i].vertex_index);
     }
     
+	vec3 temp;
+	for (int i = 0; i < model.vertices_size; i++)
+    {
+        temp.x = attrib.vertices[0 + i * 3];
+        temp.y = attrib.vertices[1 + i * 3];
+        temp.z = attrib.vertices[2 + i * 3];
+        model.vertices_data.push_back(temp);
+    }
+	
+	
     model.init_gl_buffers();
     
     assert(model.vertices_size != 0);

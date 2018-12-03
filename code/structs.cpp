@@ -184,14 +184,6 @@ struct imgui_window_state {
 	bool beam_window_howered;
 };
 
-struct shader {
-	ui32 buffer_id;
-	bool is_inited = false;
-	GLuint id;
-	int u_view_location, u_model_location, u_projection_location, u_color_location, u_state, u_draw_outline, u_text_color, u_is_billboard;
-	vector<vec4> rand_colors;
-};
-
 struct jvertex {
 	unsigned int index;
 	string id;

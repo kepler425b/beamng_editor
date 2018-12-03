@@ -1,4 +1,6 @@
 
+struct shader;
+
 inline UINT32 SafeTruncateUINT64(UINT64 value)
 {
 	UINT32 Result = (UINT32)value;

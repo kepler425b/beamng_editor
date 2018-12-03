@@ -844,21 +844,21 @@ void draw_circle(shader *s, vec3 pos, vec3 axis, float angle, GLfloat scale, glm
 	glUseProgram(0);
 }
 
-void render_model(Model &model, Transform &transform, Camera *camera, shader *s)
+void render_model(Model &model, Transform &transform, Camera *camera)
 {
 	if(model.did_import_fail) return;
-	glUseProgram(s->id);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	glUseProgram(model.material.id);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	
 	//@kepler: IMPORTANT! since glsl does something withmatrices, before sending, matrices needs to be sent as transpose.
 	mat4 t = transform.r * transform.t;
 	
-	glUniformMatrix4fv(s->u_view_location, 1, false, glm::value_ptr(camera->get_mat()));
-	glUniformMatrix4fv(s->u_model_location, 1, false, glm::value_ptr(t));
-	glUniformMatrix4fv(s->u_projection_location, 1, false, glm::value_ptr(camera->mat_projection));
+	glUniformMatrix4fv(model.material.u_view_location, 1, false, glm::value_ptr(camera->get_mat()));
+	glUniformMatrix4fv(model.material.u_model_location, 1, false, glm::value_ptr(t));
+	glUniformMatrix4fv(model.material.u_projection_location, 1, false, glm::value_ptr(camera->mat_projection));
 	
-	glUniform1i(s->u_state, 0);
-	glUniform4fv(s->u_color_location, 1, &model.line_color[0]);
+	glUniform1i(model.material.u_state, 1);
+	glUniform4fv(model.material.u_color_location, 1, &model.material.color[0]);
 	
 	glBindBuffer(GL_ARRAY_BUFFER, model.vertex_buffer);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * model.vertices_data.size(), &model.vertices_data[0], GL_DYNAMIC_DRAW);
@@ -867,7 +867,10 @@ void render_model(Model &model, Transform &transform, Camera *camera, shader *s)
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model.index_buffer);
 	
 	glDrawElements(GL_TRIANGLES, model.indices.size(), GL_UNSIGNED_INT, 0);
-	glDrawElements(GL_POINTS, model.indices.size(), GL_UNSIGNED_INT, 0);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	glUniform4fv(model.material.u_color_location, 1, &vec4(model.material.color * 0.75f)[0]);
+	glDrawElements(GL_TRIANGLES, model.indices.size(), GL_UNSIGNED_INT, 0);
+	//glDrawElements(GL_POINTS, model.indices.size(), GL_UNSIGNED_INT, 0);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glDisableVertexAttribArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);

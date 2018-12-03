@@ -78,6 +78,7 @@ void delete_entity(ui32 id)
 
 void delete_component(ui32 entity_index, Entity_Component_Type type)
 {
+	entity_index-1;
 	switch(type)
 	{
 		case COMPONENT_MESH: 
@@ -132,7 +133,7 @@ void process_entities()
 		{
 			//e->transform.translate(vec3(sinf(time_state.seconds_passed)*eid, cosf(time_state.seconds_passed)*eid, 0.0f) * (eid * time_state.dt));
 			ui32 index = e->mesh_components[e->mesh_components.size()-1].data_id;
-			render_model(model_mesh_memory[index], e->transform, &camera, &default_shader);
+			render_model(model_mesh_memory[index], e->transform, &camera);
 		}
 		if(e->mover_components.size() == 1)
 		{
