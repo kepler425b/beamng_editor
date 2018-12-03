@@ -1,7 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 #define TINYOBJLOADER_IMPLEMENTATION
 #define GLEW_STATIC
-#define STB_TRUETYPE_IMPLEMENTATION 
+#define STB_TRUETYPE_IMPLEMENTATION
 #define NK_IMPLEMENTATION
 
 typedef unsigned short ui16;
@@ -75,6 +75,7 @@ map <string, unsigned int> temp_map;
 #include "render_functions.cpp"
 #include "collision.cpp"
 #include "file_io.cpp"
+#include "entities.cpp"
 object o;
 vector <object> objects;
 display display_info;
@@ -319,7 +320,7 @@ int main(int argc, char* argv[])
 		}
 	}
 	//@kepler: important to move object o with all nodes to a already declared struct (jmodel), before initilizing pointers!
-	JModel jmodel = init_jbeam(objects);
+	JModel jmodel;// = init_jbeam(objects);
     
 	for (int i = 0; i < jmodel.data.size(); i++)
 	{
@@ -547,7 +548,7 @@ int main(int argc, char* argv[])
         
 		process_input();
         
-		update_mover(2.0f, input_state, time_state);
+		update_mover(1.0f, input_state, time_state);
 		
 		mouse_delta3d_current = p_near;
 		int x, y;
@@ -578,19 +579,19 @@ int main(int argc, char* argv[])
 		rect_A.origin = vec3_zero;
 		
 		
-		draw_rect(&default_shader, rect_A.origin, rect_A.r[0], rect_A.r[1], vec3(1), 0, 1.0f, RED, &camera, true);
+		draw_rect(&default_shader, rect_A.origin, rect_A.r[0], rect_A.r[1], vec3(1), 0, 1.0f, vec4(1.0, 1.0, 0.0, 0.5f), &camera, true);
 		
-		draw_rect(&default_shader, rect_B.origin, rect_B.r[0], rect_B.r[1], vec3(1), 0, 1.0f, RED, &camera, true);
-        //draw_sphere(16, &default_shader, &camera, vec4(1.0f, 1.0f, 0.0f, 1.0f), vec3_zero, false, true, 60.0f);
+		draw_rect(&default_shader, rect_B.origin, rect_B.r[0], rect_B.r[1], vec3(1), 0, 1.0f, vec4(1.0, 0.0, 1.0, 0.5f), &camera, true);
+        
         
 		if(resolve_rect_collisions(rect_A, rect_B))
 		{
-			draw_rect(&default_shader, rect_A.origin, rect_A.r[0], rect_A.r[1], vec3(1), 0, 1.0f, GREEN, &camera, true);
-		} 
+			draw_rect(&default_shader, rect_A.origin + vec3_forward * 0.01f, rect_A.r[0], rect_A.r[1], vec3(1), 0, 1.0f, GREEN, &camera, true);
+		}
         
         draw_sphere(circle_num, &default_shader, &camera, vec4(0.2f, 0.5f, 0.8f, 0.5f), A.p, fill_circle, true, A.r);
         
-        //draw_sphere(circle_num, &default_shader, &camera, vec4(0.2f, 0.8f, 0.1f, 0.5f), B.p, fill_circle, true, B.r);
+        draw_sphere(circle_num, &default_shader, &camera, vec4(0.2f, 0.8f, 0.1f, 0.5f), B.p, fill_circle, true, B.r);
         
 		draw_icosahedron(circle_num, &default_shader, &camera, vec4(0.2f, 0.5f, 0.8f, 0.5f), vec3_right + -vec3_up, fill_circle, true, A.r);
         
@@ -601,7 +602,7 @@ int main(int argc, char* argv[])
 		
         
 		//NOTE: since acceleration formula is a = F * m/s * m/s (m/s squared).
-		//force is 
+		//force is
         
 		vec3 force = vec3(0, gravity, 0) * 1.0f/tomato.mass;
         tomato.acceleration =  1.0f/tomato.mass * tomato.force + force * time_state.dt * time_state.dt * 0.5f;
@@ -681,8 +682,8 @@ int main(int argc, char* argv[])
         
         
         jmodel.line_color = vec3(0.2f, 1.0f, 0.2f);
-        jmodel.translate(jmodel.local_position);
-        jmodel.uniformScale(1.0f);
+        jmodel.transform.translate(jmodel.local_position);
+        
         
         vec3 p;
         p.x = sinf(time_state.seconds_passed);
@@ -691,16 +692,14 @@ int main(int argc, char* argv[])
         
         p *= 1.0f;
         debug_point(p, RED + GREEN, 10, &default_shader);
-        vec3 d = input_state.mouse_w - sphere.get_pos();
+        vec3 d = input_state.mouse_w - sphere.transform.position();
         //sphere.add_pos(normalize(input_state.mouse_w) * speed * time_state.dt);
-        sphere.look_at(d);
+        
+		//nlohmann_loop(jbeam_d, input_state);
+		//rapidjson_loop(document, input_state);
         
         
-        //nlohmann_loop(jbeam_d, input_state);
-        //rapidjson_loop(document, input_state);
-        
-        
-        vec3 v;
+		vec3 v;
         if(tomato.t.position().y <= -2.0f)
         {
             vec3 dir = normalize(tomato.velocity);
@@ -709,7 +708,7 @@ int main(int argc, char* argv[])
             vec3 r = -2*l*nr + dir;
             vec3 n = normalize(r);
             tomato.t.translate(vec3(0, -2.0 - tomato.t.position().y, 0));
-            v = n * (0.4f * length(tomato.velocity)); 
+            v = n * (0.4f * length(tomato.velocity));
             tomato.velocity = v;
             //tomato.add_force(vec3(16.0f, 0, 0.9f));
             
@@ -767,7 +766,7 @@ int main(int argc, char* argv[])
         {
             /*
             kpl_draw_texture(texture_info, bullets[i].t.position(), vec3(1.0f, 1.0f, 1.0f), show_outline, is_billboard); */
-            draw_sphere(circle_num, &default_shader, &camera, vec4(0.7f, 0.2f, 0.8f, 0.5f), bullets[i].t.position(), fill_circle, true, 1.0f);
+            //draw_sphere(circle_num, &default_shader, &camera, vec4(0.7f, 0.2f, 0.8f, 0.5f), bullets[i].t.position(), fill_circle, true, 1.0f);
         }
         
         
@@ -783,11 +782,42 @@ int main(int argc, char* argv[])
             {
                 if (x*x + y * y <= circle_width * circle_width)
                 {
-                    debug_point(vec3(x, y, 0), RED + GREEN, 10, &default_shader);
+                    debug_point(vec3(x, y, 0), GREEN, 10, &default_shader);
                 }
             }
         }
         
+		
+		//sphere.line_color = vec3(0.2f, 1.0f, 0.2f);
+		//sphere.pos = vec3_zero;
+		sphere.transform.set_position(p);
+		sphere.transform.look_at(p);
+		render_model(sphere, sphere.transform, &camera, &default_shader);
+		
+        sphere.show_basis();
+        
+		
+		static float delay2;
+        if(time_state.seconds_passed > delay2 + 0.5f && input_state.m_left)
+		{
+			Entity test;
+			test.transform.set_position(input_state.mouse_w);
+			attach_component(test, COMPONENT_MESH, sphere);
+			attach_component(test, COMPONENT_MOVER, sphere);
+			model_mesh_memory[test.mesh_components[0].data_id].line_color = vec4(1.0/rand(), 1.0/rand(), 1.0/rand(), 1);
+			push_entity(test);
+			delay2 = time_state.seconds_passed;
+        }
+		
+		
+		
+		process_entities();
+		
+		
+		
+		
+		
+		
         /*
         for(int i = 0; i < circle_num; i++)
         {
@@ -806,17 +836,6 @@ int main(int argc, char* argv[])
         ImGui_ImplSDL2_NewFrame(mainWindow);
         ImGui::NewFrame();
         
-        for (int i = 0; i < circle_precision; i++)
-        {
-            vec3 ps = input_state.mouse_w;
-            ps.x += cosf(i) * circle_width;
-            ps.y += sinf(i) * circle_width;
-            //ps.z += p.x + p.y * 0.01f;
-            debug_point(ps, vec4(ps.x, ps.y, 0.0f, 1.0f), 5, &default_shader);
-        }
-		
-        
-		
         if (show_demo_window) ImGui::ShowDemoWindow(&show_demo_window);
         {
             static float f = 0.0f;
@@ -859,7 +878,7 @@ int main(int argc, char* argv[])
             ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
             ImGui::Checkbox("Another Window", &show_another_window);
             
-            ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f    
+            ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
             ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
             ImGui::SliderFloat("offset ratio", &offset_ratio, 0.1f, 1.0f, "%.3f");
             ImGui::Checkbox("show outline", &show_outline);
@@ -875,9 +894,9 @@ int main(int argc, char* argv[])
             {
                 ImGui::Text("camera.f() = %.3f, %.3f, %.3f", camera.f().x, camera.f().y, camera.f().z);
                 ImGui::Text("camera.pos = %.3f, %.3f, %.3f", camera.pos.x, camera.pos.y, camera.pos.z);
-                ImGui::Text("sphere.f = %.3f, %.3f, %.3f", sphere.get_f().x, sphere.get_f().y, sphere.get_f().z);
-                ImGui::Text("sphere.r = %.3f, %.3f, %.3f", sphere.get_r().x, sphere.get_r().y, sphere.get_r().z);
-                ImGui::Text("sphere.u = %.3f, %.3f, %.3f", sphere.get_u().x, sphere.get_u().y, sphere.get_u().z);
+                ImGui::Text("sphere.f = %.3f, %.3f, %.3f", sphere.transform.forward().x, sphere.transform.forward().y, sphere.transform.forward().z);
+                ImGui::Text("sphere.r = %.3f, %.3f, %.3f", sphere.transform.right().x, sphere.transform.right().y, sphere.transform.right().z);
+                ImGui::Text("sphere.u = %.3f, %.3f, %.3f", sphere.transform.up().x, sphere.transform.up().y, sphere.transform.up().z);
                 ImGui::Text("camera dt = %.3f, %.3f, %.3f", c_dt.x, c_dt.y, c_dt.z);
                 ImGui::Text("camera velocity = %.3f, %.3f, %.3f", c_velocity.x, c_velocity.y, c_velocity.z);
                 ImGui::Text("camera view mode = %d", camera.view_mode);

@@ -176,8 +176,6 @@ void export_jbeam(vector <jvertex> *vertices_data, char* filename)
 	file << "";
 }
 
-std::vector<vec3> vertices_data;
-
 Model import_model(char *file)
 {
 	Model model;
@@ -188,7 +186,7 @@ Model import_model(char *file)
     
 	bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &err, file);
     
-	if (!err.empty()) {
+	if (err.empty()) {
 		std::cerr << err << std::endl;
         model.did_import_fail = true;
         return model;
@@ -217,7 +215,7 @@ Model import_model(char *file)
                 // tinyobj::real_t red = attrib.colors[3*idx.vertex_index+0];
                 // tinyobj::real_t green = attrib.colors[3*idx.vertex_index+1];
                 // tinyobj::real_t blue = attrib.colors[3*idx.vertex_index+2];
-                vertices_data.push_back(vec3(vx, vy, vz));
+                model.vertices_data.push_back(vec3(vx, vy, vz));
             }
             index_offset += fv;
             
@@ -225,26 +223,7 @@ Model import_model(char *file)
             shapes[s].mesh.material_ids[f];
         }
     }
-    
     model.init(attrib.vertices.size() / 3);
-    
-    vec3 temp;
-    vec3 temp_mass_center;
-    for (int i = 0; i < allocated_size(model.vertices); i++)
-    {
-        temp.x = attrib.vertices[0 + i * 3];
-        temp.y = attrib.vertices[1 + i * 3];
-        temp.z = attrib.vertices[2 + i * 3];
-        
-        model.vertices[i].active = false;
-        model.vertices[i].pos = temp;
-        
-        temp_mass_center += temp;
-    }
-    model.mass_center.x = temp_mass_center.x / model.vertices_size;
-    model.mass_center.y = temp_mass_center.y / model.vertices_size;
-    model.mass_center.z = temp_mass_center.z / model.vertices_size;
-    
     
     for (int i = 0; i < shapes[0].mesh.indices.size(); i++)
     {
@@ -252,7 +231,6 @@ Model import_model(char *file)
     }
     
     model.init_gl_buffers();
-    
     
     assert(model.vertices_size != 0);
     model.did_import_fail = false;

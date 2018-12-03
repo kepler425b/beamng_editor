@@ -4,9 +4,9 @@
 
 struct Transform {
     
-	mat4 r;
-	mat4 t;
-	mat4 m;
+	mat4 r = mat4(1.0f);
+	mat4 t = mat4(1.0f);
+	mat4 m = mat4(1.0f);
     
     void translate(vec3 d)
     {
@@ -47,17 +47,18 @@ struct Transform {
 		vec3 forward = normalize(p);
 		vec3 right = normalize(cross(vec3_up, forward));
 		vec3 up = normalize(cross(forward, right));
-		t[0][0] = right.x;
-		t[1][0] = right.y;
-		t[2][0] = right.z;
-		t[0][1] = up.x;
-		t[1][1] = up.y;
-		t[2][1] = up.z;
-		t[0][2] = forward.x; 
-		t[1][2] = forward.y; 
-		t[2][2] = forward.z; 
+		r[0][0] = right.x;
+		r[1][0] = right.y;
+		r[2][0] = right.z;
+		r[0][1] = up.x;
+		r[1][1] = up.y;
+		r[2][1] = up.z;
+		r[0][2] = forward.x; 
+		r[1][2] = forward.y; 
+		r[2][2] = forward.z; 
 	}
 };
+
 
 struct Collider_Rect {
 	float r[3];
@@ -148,6 +149,8 @@ struct Input
 
 struct Mover {
 	vec3 v;
+    vec3 velocity;
+    vec3 acceleration;
 	float x, y, z;
 };
 
@@ -155,12 +158,25 @@ Mover mover;
 
 void update_mover(float speed, Input &i, Time &t)
 {
-	
 	if(i.a_up) mover.y += speed * t.dt;
 	if(i.a_down) mover.y -= speed * t.dt;
 	if(i.a_right) mover.x += speed * t.dt;
-	if(i.a_left) mover.y -= speed * t.dt;
-	mover.v += vec3(mover.x, mover.y, mover.z);
+	if(i.a_left) mover.x -= speed * t.dt;
+	mover.v = vec3(mover.x, mover.y, mover.z);
+	mover.acceleration = mover.v * t.dt * t.dt * 0.5f;
+	mover.v += mover.acceleration;
+}
+
+void update_movers(Transform &transform, float speed, Input &i, Time &t)
+{
+	Mover m;
+	if(i.a_up) m.y += speed * t.dt;
+	if(i.a_down) m.y -= speed * t.dt;
+	if(i.a_right) m.x += speed * t.dt;
+	if(i.a_left) m.x -= speed * t.dt;
+	m.v = vec3(m.x, m.y, m.z);
+	m.acceleration = m.v;
+	transform.translate(m.acceleration);
 }
 
 struct imgui_window_state {

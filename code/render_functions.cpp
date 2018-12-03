@@ -378,7 +378,7 @@ void debug_point(vec3 a, vec4 color, float size, shader *s)
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vec3), &data[0], GL_STATIC_DRAW);
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), 0);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
 	
 	//clear the model matrix
 	glUniformMatrix4fv(s->u_model_location, 1, false, &mat4(1.0f)[0][0]);
@@ -710,7 +710,7 @@ void draw_quad(shader *s, vec3 pos, vec3 axis, float angle, GLfloat scale, glm::
 	glUniformMatrix4fv(s->u_view_location, 1, false, glm::value_ptr(camera->mat_view));
 	glUniformMatrix4fv(s->u_model_location, 1, false, glm::value_ptr(m));
 	glUniformMatrix4fv(s->u_projection_location, 1, false, glm::value_ptr(camera->mat_projection));
-	glUniform3fv(s->u_color_location, 1, &color[0]);
+	glUniform4fv(s->u_color_location, 1, &color[0]);
 	
 	GLfloat vertices[] = 
 	{ -1, -1, 0, // bottom left corner
@@ -743,13 +743,12 @@ void draw_quad(shader *s, vec3 pos, vec3 axis, float angle, GLfloat scale, glm::
 	glUseProgram(0);
 }
 
-void draw_rect(shader *s, vec3 pos, float w, float h, vec3 axis, float angle, GLfloat scale, glm::vec4 color,
+void draw_rect(shader *s, vec3 pos, float w, float h, vec3 axis, float angle, float  scale, vec4 color,
                Camera *camera, bool debug)
 {
-	//glEnable(GL_BLEND);
-	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glDisable(GL_CULL_FACE);
 	
 	// Activate corresponding render state	
 	glUseProgram(s->id);
@@ -759,7 +758,7 @@ void draw_rect(shader *s, vec3 pos, float w, float h, vec3 axis, float angle, GL
 	glUniformMatrix4fv(s->u_view_location, 1, false, glm::value_ptr(camera->mat_view));
 	glUniformMatrix4fv(s->u_model_location, 1, false, glm::value_ptr(m));
 	glUniformMatrix4fv(s->u_projection_location, 1, false, glm::value_ptr(camera->mat_projection));
-	glUniform3fv(s->u_color_location, 1, &color[0]);
+	glUniform4fv(s->u_color_location, 1, &color[0]);
 	
 	GLfloat vertices[] = 
 	{ 0, 0, 0, // bottom left corner
@@ -790,6 +789,9 @@ void draw_rect(shader *s, vec3 pos, float w, float h, vec3 axis, float angle, GL
 	//glDisable(GL_BLEND);
 	glDeleteBuffers(1, &buff);
 	glUseProgram(0);
+	glEnable(GL_CULL_FACE);
+	glDisable(GL_BLEND);
+	debug_point(pos, vec4(1), 8, &default_shader);
 }
 
 
@@ -809,7 +811,7 @@ void draw_circle(shader *s, vec3 pos, vec3 axis, float angle, GLfloat scale, glm
 	glUniformMatrix4fv(s->u_view_location, 1, false, glm::value_ptr(camera->mat_view));
 	glUniformMatrix4fv(s->u_model_location, 1, false, glm::value_ptr(m));
 	glUniformMatrix4fv(s->u_projection_location, 1, false, glm::value_ptr(camera->mat_projection));
-	glUniform3fv(s->u_color_location, 1, &color[0]);
+	glUniform4fv(s->u_color_location, 1, &color[0]);
 	
 	GLfloat vertices[] =
 	{ -1, -1, 0, // bottom left corner
@@ -842,14 +844,14 @@ void draw_circle(shader *s, vec3 pos, vec3 axis, float angle, GLfloat scale, glm
 	glUseProgram(0);
 }
 
-void render_model(Model &model, Camera *camera, shader *s)
+void render_model(Model &model, Transform &transform, Camera *camera, shader *s)
 {
 	if(model.did_import_fail) return;
 	glUseProgram(s->id);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	
 	//@kepler: IMPORTANT! since glsl does something withmatrices, before sending, matrices needs to be sent as transpose.
-	mat4 t = transpose(model.transform.r * model.transform.t);
+	mat4 t = transform.r * transform.t;
 	
 	glUniformMatrix4fv(s->u_view_location, 1, false, glm::value_ptr(camera->get_mat()));
 	glUniformMatrix4fv(s->u_model_location, 1, false, glm::value_ptr(t));
@@ -859,9 +861,9 @@ void render_model(Model &model, Camera *camera, shader *s)
 	glUniform4fv(s->u_color_location, 1, &model.line_color[0]);
 	
 	glBindBuffer(GL_ARRAY_BUFFER, model.vertex_buffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(jvertex) * model.vertices_size, &model.vertices->pos[0], GL_DYNAMIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * model.vertices_data.size(), &model.vertices_data[0], GL_DYNAMIC_DRAW);
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(jvertex), 0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, model.index_buffer);
 	
 	glDrawElements(GL_TRIANGLES, model.indices.size(), GL_UNSIGNED_INT, 0);
@@ -873,13 +875,13 @@ void render_model(Model &model, Camera *camera, shader *s)
 	glUseProgram(0);
 }
 
-
+/*
 void draw_model(Model &model, vec3 pos, vec4 color)
 {
-	model.line_color = color;
-	render_model(model, &camera, &default_shader);
+ model.line_color = color;
+ render_model(model, &camera, &default_shader);
 }
-
+*/
 void render_jmodel(JModel *model, Camera *camera, shader *s)
 {
 	if(model->did_import_fail) return;

@@ -88,22 +88,22 @@ bool cast_ray(Sphere &target, Ray_Info &info, vec3 origin, vec3 direction, float
 	}
 }
 
-bool resolve_rect_collisions(Collider_Rect a, Collider_Rect b)
+bool resolve_rect_collisions(Collider_Rect &a, Collider_Rect &b)
 {
-	int r;
-	
-	r = a.r[0] + b.r[0]; if(((unsigned int)a.origin.x - b.origin.x + r) > r + r) return 0;r = a.r[1] + b.r[1]; if(((unsigned int)a.origin.y - b.origin.y + r) > r + r) return 0;
-	cout << "asd" << endl;
-	return 1; 
+	if (a.origin.x + a.r[0] < b.origin.x || a.origin.x > b.origin.x + b.r[0]) return 0;
+	if (a.origin.y + a.r[1] < b.origin.y || a.origin.y > b.origin.y + b.r[1]) return 0;
+	//if (a.origin.z + a.r[2] < b.origin.z || a.origin.z > b.origin.z + b.r[2]) return 0;
+	return 1;
 }
+
 
 bool resolve_sphere_collisions(Sphere &a, Sphere &b)
 {
-    vec3 tmp = a.p - b.p;
-    float d = dot(tmp, tmp);
-    float r = a.r + b.r;
-    if (d <= r * r) return true;
-    else return false;
+	vec3 tmp = a.p - b.p;
+	float d = dot(tmp, tmp);
+	float r = a.r + b.r;
+	if (d <= r * r) return true;
+	else return false;
 }
 
 bool col(vec3 &pA, vec3 &pB, jvertex &Target, bool &lshift)
@@ -116,8 +116,8 @@ bool col(vec3 &pA, vec3 &pB, jvertex &Target, bool &lshift)
 	float t_dis = distance(pB, pA);
 	float t = dot(t_dir, p_dir_n);
 	float result_dis;
-    
-    
+	
+	
 	if (t <= 0.0)
 	{
 		closest_p = pA;
@@ -130,10 +130,10 @@ bool col(vec3 &pA, vec3 &pB, jvertex &Target, bool &lshift)
 	{
 		closest_p = pA + p_dir_n * t;
 	}
-    
+	
 	result_dis = distance(target_vec3, closest_p);
-    
-    
+	
+	
 	if (result_dis <= 0.02f) {
 		Target.active = true;
 		return true;
@@ -141,7 +141,7 @@ bool col(vec3 &pA, vec3 &pB, jvertex &Target, bool &lshift)
 	else
 	{
 		if (!lshift) Target.active = false;
-        
+		
 		return false;
 	}
 }
@@ -153,7 +153,7 @@ vec3 col_area(vec3 &pA, vec3 &pB)
 	vec3 p_dir_n = normalize(p_dir);
 	float t_dis = distance(pB, pA);
 	float result_dis;
-    
+	
 	return vec3(pA.x * t_dis * pA.y);
 }
 
@@ -168,7 +168,7 @@ bool col_edge(vec3 &pA, vec3 &pB, jvertex &Target)
 	float t_dis = distance(pB, pA);
 	float t = dot(t_dir, p_dir_n);
 	float result_dis;
-    
+	
 	if (t <= 0.0)
 	{
 		closest_p = pA;
@@ -181,10 +181,10 @@ bool col_edge(vec3 &pA, vec3 &pB, jvertex &Target)
 	{
 		closest_p = pA + p_dir_n * t;
 	}
-    
+	
 	result_dis = distance(target_vec3, closest_p);
-    
-    
+	
+	
 	if (result_dis <= 0.8f) {
 		Target.active = true;
 		return true;
@@ -202,7 +202,7 @@ bool col_beam(vec3 &pA, vec3 &pB, beam_pointer *beam, bool &lshift)
 	float t_dis = distance(pB, pA);
 	float t = dot(t_dir, p_dir_n);
 	float result_dis;
-    
+	
 	if (t <= 0.0)
 	{
 		closest_p = pA;
@@ -215,9 +215,9 @@ bool col_beam(vec3 &pA, vec3 &pB, beam_pointer *beam, bool &lshift)
 	{
 		closest_p = pA + p_dir_n * t;
 	}
-    
+	
 	result_dis = distance(target_vec3, closest_p);
-    
+	
 	if (result_dis <= 0.05f) {
 		beam->a->active = true;
 		beam->b->active = true;
@@ -244,7 +244,7 @@ bool col_beam_ishowered(vec3 &pA, vec3 &pB, beam_pointer *beam)
 	float t_dis = distance(pB, pA);
 	float t = dot(t_dir, p_dir_n);
 	float result_dis;
-    
+	
 	if (t <= 0.0)
 	{
 		closest_p = pA;
@@ -257,9 +257,9 @@ bool col_beam_ishowered(vec3 &pA, vec3 &pB, beam_pointer *beam)
 	{
 		closest_p = pA + p_dir_n * t;
 	}
-    
+	
 	result_dis = distance(target_vec3, closest_p);
-    
+	
 	if (result_dis <= 0.05f) {
 		return true;
 	}
@@ -276,7 +276,7 @@ bool col2(vec3 &pA, vec3 &pB, vec3 &Target)
 	float t_dis = distance(pB, pA);
 	float t = dot(t_dir, p_dir_n);
 	float result_dis;
-    
+	
 	if (t <= 0.0)
 	{
 		closest_p = pA;
@@ -289,9 +289,9 @@ bool col2(vec3 &pA, vec3 &pB, vec3 &Target)
 	{
 		closest_p = pA + p_dir_n * t;
 	}
-    
+	
 	result_dis = distance(target_vec3, closest_p);
-    
+	
 	if (result_dis <= 0.05f) {
 		return true;
 	}
