@@ -255,7 +255,9 @@ struct display {
 	ui32 num_displays;
 	ui32 mode_id; // SDL_WINDOW_FULLSCREEN, SDL_WINDOW_FULLSCREEN_DESKTOP or 0
 	ivec4 cl_area;
+	bool show_entity_bases;
 };
+display display_info;
 
 struct Character {
 	GLuint     TextureID;

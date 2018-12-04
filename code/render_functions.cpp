@@ -30,6 +30,15 @@ void debug_line(vec3 a, vec3 b, vec4 color, shader *s, Camera *camera)
 	glUseProgram(0);
 }
 
+
+void show_basis(Transform &transform)
+{
+	float sc = 1.0f;
+	debug_line(transform.position(), transform.position() + transform.forward() * sc, RED, &default_shader, &camera);
+	debug_line(transform.position(), transform.position() + transform.up() * sc, BLUE, &default_shader, &camera);
+	debug_line(transform.position(), transform.position() + transform.right() * sc, GREEN, &default_shader, &camera);
+}
+
 void draw_circle(int precision, shader *s, Camera *camera, vec4 color, vec3 pos, bool fill, float radius)
 {
     glUseProgram(s->id);

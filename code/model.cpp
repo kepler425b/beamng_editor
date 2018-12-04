@@ -25,13 +25,6 @@ struct Model {
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 		glGenBuffers(1, &vertex_buffer);
 	}
-	void show_basis()
-	{
-		float sc = 1.0f;
-		debug_line(transform.position(), transform.position() + transform.forward() * sc, RED, &default_shader, &camera);
-		debug_line(transform.position(), transform.position() + transform.up() * sc, BLUE, &default_shader, &camera);
-		debug_line(transform.position(), transform.position() + transform.right() * sc, GREEN, &default_shader, &camera);
-	}
 };
 
 struct JModel {

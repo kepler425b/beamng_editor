@@ -66,11 +66,12 @@ void push_entity(Entity &e)
 
 void delete_entity(ui32 id)
 {
-	if(id < entities.size()) 
+	if(id > entities.size()) 
 	{
 		cout << "trying to delete non existant entity at: " << id << endl;
+		return;
 	}
-	else
+	else if(entities.size() != 0)
 	{
 		entities.erase(entities.begin() + index);
 	}
@@ -78,12 +79,11 @@ void delete_entity(ui32 id)
 
 void delete_component(ui32 entity_index, Entity_Component_Type type)
 {
-	entity_index-1;
 	switch(type)
 	{
 		case COMPONENT_MESH: 
 		{
-			if(entity_index <= entities.size())
+			if(entity_index < entities.size())
 			{
 				if(entities[entity_index].mesh_components.size() > 0)
 				{
@@ -96,7 +96,7 @@ void delete_component(ui32 entity_index, Entity_Component_Type type)
 		
 		case COMPONENT_MOVER:
 		{
-			if(entity_index <= entities.size())
+			if(entity_index < entities.size())
 			{
 				if (entities[entity_index].mover_components.size() > 0)
 				{
@@ -139,6 +139,10 @@ void process_entities()
 		{
 			ui32 index = e->mover_components[e->mover_components.size()-1].data_id;
 			update_movers(e->transform, 1.0f, input_state, time_state);
+		}
+		if(display_info.show_entity_bases)
+		{
+			show_basis(e->transform);
 		}
 	}
 }

@@ -12,6 +12,7 @@ typedef int            i32;
 
 #include <Windows.h>
 #include <SDL.h>
+#include <SDL_syswm.h>
 #include <SDL_image.h>
 #include <vec3.hpp> // glm::vec3
 #include <vec4.hpp> // glm::vec4
@@ -76,9 +77,19 @@ map <string, unsigned int> temp_map;
 #include "collision.cpp"
 #include "file_io.cpp"
 #include "entities.cpp"
+
+//#pragma comment(lib, "Ws2_32.lib") winsock
+#pragma comment(lib, "winmm.lib")
+
+#include "dsound.h"
+#define DIRECT_SOUND_CREATE(name) HRESULT WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND* ppDS, LPUNKNOWN pUnkOuter)
+
+typedef DIRECT_SOUND_CREATE(direct_sound_create);
+
+#include "sound.cpp"
+
 object o;
 vector <object> objects;
-display display_info;
 
 vec2 window_center = { display_info.w / 2, display_info.h / 2 };
 vec2 mouse_delta2d;
@@ -105,6 +116,8 @@ fvec3 translation_delta_current;
 #define beam_mem_size = 1024
 #define sine_degrees sinf(time_state.seconds_passed) * (180/pi)
 //#include <stb_truetype.h>
+
+
 
 SDL_Event Event;
 SDL_Window *mainWindow;
@@ -159,7 +172,6 @@ bool show_demo_window = true;
 bool show_another_window = false;
 vec4 clear_color = fvec4(0.15f, 0.15f, 0.1f, 1.0f);
 
-
 int main(int argc, char* argv[])
 {
 	const char* glsl_version = "#version 130";
@@ -189,7 +201,7 @@ int main(int argc, char* argv[])
         
 		display_info.w = a.w;
 		display_info.h = a.h;
-        
+        display_info.show_entity_bases = 1;
 		mainWindow = SDL_CreateWindow("Beaminster", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
                                       display_info.cl_area.x, display_info.cl_area.y, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
 		if (!mainWindow)
@@ -544,6 +556,24 @@ int main(int argc, char* argv[])
 	}
 	
 	
+	win32_sound_output SoundOutput = {};
+	SoundOutput.SamplesPerSecond = 44100;
+	SoundOutput.ToneHz = 256;
+	SoundOutput.ToneVolume = 3000;
+	SoundOutput.WavePeriod = SoundOutput.SamplesPerSecond / SoundOutput.ToneHz;
+	SoundOutput.BytesPerSample = sizeof(INT16) * 2;
+	SoundOutput.SecondaryBufferSize =SoundOutput.SamplesPerSecond * SoundOutput.BytesPerSample;
+	SoundOutput.LatencySampleCount = SoundOutput.SamplesPerSecond / 1;
+	
+	SDL_SysWMinfo wmInfo;
+	SDL_VERSION(&wmInfo.version);
+	SDL_GetWindowWMInfo(mainWindow, &wmInfo);
+	HWND WindowHandle = wmInfo.info.win.window;
+	
+	SoundBuffer.AudioBufferSize = 48000;
+	init_direct_sound(WindowHandle, 44100, &SoundBuffer);
+	
+	open_wav_file("../data/test.wav", &SoundBuffer);
 	
 	stringstream console_log_buffer;
 	streambuf *old = cout.rdbuf(console_log_buffer.rdbuf());
@@ -819,7 +849,7 @@ int main(int argc, char* argv[])
 		sphere.transform.look_at(p);
 		render_model(sphere, sphere.transform, &camera);
 		sphere.material.color = vec4(cosf(time_state.seconds_passed * time_state.dt),sinf(time_state.seconds_passed * time_state.dt), sinf(time_state.seconds_passed), 1);
-		sphere.show_basis();
+		show_basis(sphere.transform);
 		
 		
 		
@@ -834,12 +864,14 @@ int main(int argc, char* argv[])
 			delay = time_state.seconds_passed;
 		}
 		
+		char *pcm;
 		
+		int err = PlaySound(0, 0, DSBPLAY_LOOPING);
 		
 		process_entities();
 		
 		//NOTE: this causes access violation
-		if(time_state.seconds_passed > delay + 0.1f)
+		if(time_state.seconds_passed > delay + 0.05f)
 		{
 			delete_entity(entities.size());
 			delay = time_state.seconds_passed;
@@ -909,6 +941,7 @@ display_info.h = mode.h;*/
 			ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
 			ImGui::SliderFloat("offset ratio", &offset_ratio, 0.1f, 1.0f, "%.3f");
 			ImGui::Checkbox("show outline", &show_outline);
+			ImGui::Checkbox("display entity bases", &display_info.show_entity_bases);
 			ImGui::Checkbox("is billboard", &is_billboard);
 			ImGui::SliderInt("circle_precision", &circle_precision, 4, 720, "%d");
 			ImGui::SliderFloat("circle_width", &circle_width, 0.1f, 32.0f, "%.3f");
