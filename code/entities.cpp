@@ -22,6 +22,15 @@ struct Entity {
 	vector<component_mover> mover_components;
 };
 
+
+
+
+void assemble_entity(Entity &e)
+{
+	//put needed entities
+}
+
+
 vector<Entity> entities;
 void attach_component(Entity &e, Entity_Component_Type type, Model &mesh_data)
 {
@@ -118,6 +127,44 @@ void delete_component(ui32 entity_index, Entity_Component_Type type)
 	}
 }
 
+Entity* get_entity(int id)
+{
+	if(id <= entities.size() && id >= 0)
+	{
+		return &entities[id];
+	}
+	else 
+	{
+		Entity e;
+		return &e;
+	}
+}
+
+Model* get_mesh_component(int entity_id)
+{
+	if(entity_id <= entities.size())
+	{
+		int index = entities[entity_id].mesh_components[entity_id].data_id;
+		return &model_mesh_memory[index];
+	}
+	else 
+	{
+		Model m;
+		return &m; 
+	}
+}
+
+Entity *selected_entity = 0;
+
+void select_entity(Entity *e)
+{
+	if(distance(e->transform.position(), input_state.mouse_w) < 0.25f && input_state.m_left)
+	{
+		selected_entity = e;
+	}
+	
+}
+
 void process_entities()
 {
 	for(ui32 eid = 0; eid < entities.size(); eid++)
@@ -143,6 +190,17 @@ void process_entities()
 		if(display_info.show_entity_bases)
 		{
 			show_basis(e->transform);
+		}
+		select_entity(e);
+		if(selected_entity && input_state.k_delete)
+		{
+			delete_entity(selected_entity->id);
+			selected_entity = 0;
+		}
+		if(selected_entity)
+		{
+			draw_rect(&default_shader, selected_entity->transform.position(), 1.0f, 1.0f, vec3(1), 0.0f, 1.0f, GREEN, &camera, true);
+			
 		}
 	}
 }

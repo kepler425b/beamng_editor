@@ -107,8 +107,14 @@ struct Sphere
     }
 };
 
+struct key {
+	bool pressed;
+	bool last;
+};
+
 struct Input
 {
+	key mouse_left;
 	union
 	{
 		bool keys[18];

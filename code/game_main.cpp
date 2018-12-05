@@ -570,10 +570,12 @@ int main(int argc, char* argv[])
 	SDL_GetWindowWMInfo(mainWindow, &wmInfo);
 	HWND WindowHandle = wmInfo.info.win.window;
 	
-	SoundBuffer.AudioBufferSize = 48000;
+	SoundBuffer.AudioBufferSize = 147172;
 	init_direct_sound(WindowHandle, 44100, &SoundBuffer);
 	
-	open_wav_file("../data/test.wav", &SoundBuffer);
+	wav_file_data test;
+	open_wav_file("../data/test.wav", &test);
+	direct_sound_load_wav(&test, &SoundBuffer);
 	
 	stringstream console_log_buffer;
 	streambuf *old = cout.rdbuf(console_log_buffer.rdbuf());
@@ -852,29 +854,47 @@ int main(int argc, char* argv[])
 		show_basis(sphere.transform);
 		
 		
-		
-		if(time_state.seconds_passed > delay + 0.5f && input_state.m_left)
+		static float last_time;
+		static float sound_delay = 0.1f;
+		static float sound_decay = 0.99f;
+		static float  volume = -0.0f;
+		/*
+  if(time_state.seconds_passed > last_time + sound_delay && volume > -10000)
+  {
+   volume = (volume * sound_decay);
+   SoundBuffer.GlobalSecondaryBuffer->Play(0, 0, 0);
+   SoundBuffer.GlobalSecondaryBuffer->SetVolume((long)volume);
+   last_time = time_state.seconds_passed;
+  }
+  */
+		static float delay_shoot;
+		if(time_state.seconds_passed > delay_shoot + 0.5f && input_state.m_left)
 		{
-			Entity test;
-			test.transform.set_position(input_state.mouse_w);
-			attach_component(test, COMPONENT_MESH, sphere);
-			attach_component(test, COMPONENT_MOVER, sphere);
-			model_mesh_memory[test.mesh_components[0].data_id].material.color;// = vec4(1.0/time_state.seconds_passed, 1.0/time_state.seconds_passed, 1.0/time_state.seconds_passed, 1);
-			push_entity(test);
-			delay = time_state.seconds_passed;
+			SoundBuffer.GlobalSecondaryBuffer->SetCurrentPosition(0);
+			SoundBuffer.GlobalSecondaryBuffer->SetVolume(volume);
+			SoundBuffer.GlobalSecondaryBuffer->Play(0, 0, 0);
+			/*
+   Entity test;
+   test.transform.set_position(input_state.mouse_w);
+   attach_component(test, COMPONENT_MESH, sphere);
+   attach_component(test, COMPONENT_MOVER, sphere);
+   model_mesh_memory[test.mesh_components[0].data_id].material.color;// = vec4(1.0/time_state.seconds_passed, 1.0/time_state.seconds_passed, 1.0/time_state.seconds_passed, 1);
+   push_entity(test);*/
+			delay_shoot = time_state.seconds_passed;
 		}
 		
-		char *pcm;
+		//HRESULT result = SoundBuffer.GlobalSecondaryBuffer->Play(0, 0, 0);
 		
-		int err = PlaySound(0, 0, DSBPLAY_LOOPING);
+		//cout << result << endl;
 		
 		process_entities();
 		
-		//NOTE: this causes access violation
+		cout << input_state.mouse_left.pressed << endl;
+		
 		if(time_state.seconds_passed > delay + 0.05f)
 		{
-			delete_entity(entities.size());
-			delay = time_state.seconds_passed;
+			//delete_entity(entities.size());
+			//delay = time_state.seconds_passed;
 		}
 		
 		/*
@@ -945,6 +965,12 @@ display_info.h = mode.h;*/
 			ImGui::Checkbox("is billboard", &is_billboard);
 			ImGui::SliderInt("circle_precision", &circle_precision, 4, 720, "%d");
 			ImGui::SliderFloat("circle_width", &circle_width, 0.1f, 32.0f, "%.3f");
+			ImGui::SliderFloat("sound_decay", &sound_decay, 0.01f, 1.0f, "%.3f");
+			ImGui::SliderFloat("sound_volume", &volume, 0.0f, -10000.0f, "%.3f");
+			ImGui::SliderFloat("sound_delay", &sound_delay, 0.01f, 5.0f, "%.3f");
+			
+			
+			
 			ImGui::SliderFloat("mass", &tomato.mass, 0.1f, 128.0f, "%.4f");
 			ImGui::SliderFloat("gravity", &gravity, -10.0f, 10.0f, "%.4f");
 			ImGui::Checkbox("fill circle", &fill_circle);
@@ -1103,7 +1129,7 @@ display_info.h = mode.h;*/
 		was_pressed = input_state.m_left;
 		input_state.k_delete = false;
 		input_state.k_enter = false;
-		
+		//input_state.mouse_left.last = 0;
 		//tomato.velocity = tomato.vl - tomato.vc;
 		//tomato.vl = tomato.vc;
 		

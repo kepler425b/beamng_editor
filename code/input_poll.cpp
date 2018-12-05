@@ -40,6 +40,15 @@ void process_input()
                 if (Event.button.button & SDL_BUTTON_LMASK)
                 {
                     input_state.m_left = true;
+					if(!input_state.mouse_left.last)
+					{
+						input_state.mouse_left.pressed = 1;
+						input_state.mouse_left.last = 1;
+					}
+					else
+					{
+						input_state.mouse_left.pressed = 0;
+					}
                 }
                 if (Event.button.button & SDL_BUTTON_RMASK)
                 {
@@ -56,6 +65,7 @@ void process_input()
                 if (Event.button.button & SDL_BUTTON_LMASK)
                 {
                     input_state.m_left = false;
+					input_state.mouse_left.last = 0;
                 }
                 if (Event.button.button & SDL_BUTTON_RMASK)
                 {
