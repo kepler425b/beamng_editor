@@ -107,9 +107,17 @@ struct Sphere
     }
 };
 
+
+uc16 kON   = 1 << 0;
+uc16 kUSED = 1 << 1;
+
+
+#define set_active(button, flag) button |= flag; 
+#define set_inactive(button, flag) button &= ~flag;
+
+
 struct key {
-	bool pressed;
-	bool last;
+	uc16 state = 0;
 };
 
 struct Input

@@ -3,7 +3,7 @@ in vec2 TexCoords;
 out vec4 color;
 
 uniform sampler2D text;
-uniform int u_draw_outline;
+uniform int  u_draw_outline;
 uniform vec4 u_text_color;
 uniform vec4 u_color;
 

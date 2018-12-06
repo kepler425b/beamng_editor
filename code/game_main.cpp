@@ -10,6 +10,8 @@ typedef unsigned char  uc16;
 typedef short          i16;
 typedef int            i32;
 
+double second_per_tick;
+
 #include <Windows.h>
 #include <SDL.h>
 #include <SDL_syswm.h>
@@ -446,7 +448,7 @@ int main(int argc, char* argv[])
     
 	LARGE_INTEGER Frequency;
 	QueryPerformanceFrequency(&Frequency);
-	double second_per_tick = 1.0 / (double)Frequency.LowPart;
+	second_per_tick = 1.0 / (double)Frequency.LowPart;
     
 	LARGE_INTEGER tick_before_loop;
 	QueryPerformanceCounter(&tick_before_loop);
@@ -636,21 +638,21 @@ int main(int argc, char* argv[])
 		rect_A.origin = vec3_zero;
 		
 		
-		draw_rect(&default_shader, rect_A.origin, rect_A.r[0], rect_A.r[1], vec3(1), 0, 1.0f, vec4(1.0, 1.0, 0.0, 0.5f), &camera, true);
+		//draw_rect(&default_shader, rect_A.origin, rect_A.r[0], rect_A.r[1], vec3(1), 0, 1.0f, vec4(1.0, 1.0, 0.0, 0.5f), &camera, true);
 		
-		draw_rect(&default_shader, rect_B.origin, rect_B.r[0], rect_B.r[1], vec3(1), 0, 1.0f, vec4(1.0, 0.0, 1.0, 0.5f), &camera, true);
+		//draw_rect(&default_shader, rect_B.origin, rect_B.r[0], rect_B.r[1], vec3(1), 0, 1.0f, vec4(1.0, 0.0, 1.0, 0.5f), &camera, true);
         
         
 		if(resolve_rect_collisions(rect_A, rect_B))
 		{
-			draw_rect(&default_shader, rect_A.origin + vec3_forward * 0.01f, rect_A.r[0], rect_A.r[1], vec3(1), 0, 1.0f, GREEN, &camera, true);
+			//draw_rect(&default_shader, rect_A.origin + vec3_forward * 0.01f, rect_A.r[0], rect_A.r[1], vec3(1), 0, 1.0f, GREEN, &camera, true);
 		}
         
-        draw_sphere(circle_num, &default_shader, &camera, vec4(0.2f, 0.5f, 0.8f, 0.5f), A.p, fill_circle, true, A.r);
+        //draw_sphere(circle_num, &default_shader, &camera, vec4(0.2f, 0.5f, 0.8f, 0.5f), A.p, fill_circle, true, A.r);
         
-        draw_sphere(circle_num, &default_shader, &camera, vec4(0.2f, 0.8f, 0.1f, 0.5f), B.p, fill_circle, true, B.r);
+        //draw_sphere(circle_num, &default_shader, &camera, vec4(0.2f, 0.8f, 0.1f, 0.5f), B.p, fill_circle, true, B.r);
         
-		draw_icosahedron(circle_num, &default_shader, &camera, vec4(0.2f, 0.5f, 0.8f, 0.5f), vec3_right + -vec3_up, fill_circle, true, A.r);
+		//draw_icosahedron(circle_num, &default_shader, &camera, vec4(0.2f, 0.5f, 0.8f, 0.5f), vec3_right + -vec3_up, fill_circle, true, A.r);
         
         if(resolve_sphere_collisions(A, B)) debug_point(B.p, RED + GREEN, 100, &default_shader);
         
@@ -889,7 +891,7 @@ int main(int argc, char* argv[])
 		
 		process_entities();
 		
-		cout << input_state.mouse_left.pressed << endl;
+		//cout << (input_state.mouse_left.state << 1) << (input_state.mouse_left.state << 2) << endl;
 		
 		if(time_state.seconds_passed > delay + 0.05f)
 		{
@@ -996,7 +998,7 @@ display_info.h = mode.h;*/
 				ImGui::Text("tomato.pos = %.3f, %.3f, %.3f", tomato.t.position().x, tomato.t.position().y, tomato.t.position().z);
 				
 				ImGui::Text("dist = %.3f", dist);
-				
+				ImGui::Text("render_text_group duration = %.3f", bf);
 				ImGui::Text("tomato.velocity = %.3f, %.3f, %.3f", tomato.velocity.x, tomato.velocity.y, tomato.velocity.z);
 				
 				ImGui::Text("input_state.move_dt = %.3f, %.3f, %.3f", input_state.move_dt.x, input_state.move_dt.y, input_state.move_dt.z);
@@ -1129,7 +1131,7 @@ display_info.h = mode.h;*/
 		was_pressed = input_state.m_left;
 		input_state.k_delete = false;
 		input_state.k_enter = false;
-		//input_state.mouse_left.last = 0;
+		set_inactive(input_state.mouse_left.state, kON);
 		//tomato.velocity = tomato.vl - tomato.vc;
 		//tomato.vl = tomato.vc;
 		

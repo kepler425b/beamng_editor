@@ -15,14 +15,31 @@ struct component_mover {
 	ui32 data_id;
 };
 
+
+struct component_logic {
+	ui32 data_id;
+};
+
 struct Entity {
 	ui32 id;
 	Transform transform;
 	vector<component_mesh_renderer> mesh_components;
 	vector<component_mover> mover_components;
+	//void (*do_logic)(Entity *);
+	//do_logic = &mouse_follower;
 };
 
 
+void mouse_follower(Entity *e)
+{
+	float dist = distance(e->transform.position(), camera.pos);
+	if(dist > 0.5f)
+	{
+		vec3 d;
+		d = normalize(camera.pos - e->transform.position());
+		e->transform.translate(d / (dist));
+	}
+}
 
 
 void assemble_entity(Entity &e)
@@ -158,12 +175,14 @@ Entity *selected_entity = 0;
 
 void select_entity(Entity *e)
 {
-	if(distance(e->transform.position(), input_state.mouse_w) < 0.25f && input_state.m_left)
+	if(distance(e->transform.position(), input_state.mouse_w) < 0.25f && (input_state.mouse_left.state & kON))
 	{
 		selected_entity = e;
 	}
 	
 }
+
+static float before, after, before_last, after_last, bf, af;
 
 void process_entities()
 {
@@ -200,9 +219,22 @@ void process_entities()
 		if(selected_entity)
 		{
 			draw_rect(&default_shader, selected_entity->transform.position(), 1.0f, 1.0f, vec3(1), 0.0f, 1.0f, GREEN, &camera, true);
-			
+			push_text(&render_group_text, to_string(selected_entity->id), selected_entity->transform.position(), 0.5f, GREEN);
+			//kpl_draw_text(text_info, selected_entity->transform.position()+vec3_up*0.25f, to_string(selected_entity->id), 0.75f, GREEN, 1);
 		}
+		push_text(&render_group_text, to_string(e->id), e->transform.position(), 0.5f, BLUE);
 	}
+	LARGE_INTEGER tick_after_loop, tick_before_loop;
+	QueryPerformanceCounter(&tick_before_loop);
+	__int64 interval;
+	
+	render_text_group(render_group_text, text_info, &text_shader, &camera, 0);
+	
+	QueryPerformanceCounter(&tick_after_loop);
+	interval = tick_after_loop.QuadPart - tick_before_loop.QuadPart;
+	
+	bf = interval * second_per_tick;
+	render_group_text.clear();
 }
 
 

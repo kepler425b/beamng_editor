@@ -622,15 +622,113 @@ void kpl_draw_texture(texture_info &info, vec3 pos, vec3 sc, bool debug, bool bi
 	draw_texture_quad(info, &texture_shader, pos, &camera, debug, billboard);
 }
 
-void render_text(text_renderer_info &info, shader *s, std::string text, vec3 pos, GLfloat scale, vec4 color,
-                 Camera *camera, bool debug)
+
+struct draw_list_text {
+	string text;
+	vec3 pos;
+	vec4 color;
+	float scale;
+};
+
+vector<draw_list_text> render_group_text;
+
+void push_text(vector<draw_list_text> *list, string text, vec3 pos, float scale, vec4 color)
 {
+	draw_list_text t;
+	t.text = text;
+	t.pos = pos;
+	t.color = color;
+	t.scale = scale;
+	list->push_back(t);
+}
+
+void render_text_group(vector<draw_list_text> &list, text_renderer_info &info, shader *s, Camera *camera, bool debug)
+{
+	// Activate corresponding render state	
+	glUseProgram(s->id);
 	glEnable(GL_BLEND);
+	glFrontFace(GL_CCW);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	
+	glUniformMatrix4fv(s->u_view_location, 1, false, glm::value_ptr(camera->mat_view));
+	
+	glUniformMatrix4fv(s->u_projection_location, 1, false, glm::value_ptr(camera->mat_projection));
+	
+	glActiveTexture(GL_TEXTURE0);
+	glBindVertexArray(info.text_vao);
+	
+	GLfloat origin_x = 0;
+	GLfloat origin_y = 0;
+	
+	string::const_iterator c;
+	for(ui32 i = 0; i < list.size(); i++)
+	{
+		for (c = list[i].text.begin(); c != list[i].text.end(); c++)
+		{
+			glUniformMatrix4fv(s->u_model_location, 1, false, value_ptr(glm::translate(mat4(1.0f), list[i].pos)));
+			
+			float scale = list[i].scale * 0.01f;
+			Character ch = info.text_characters[*c];
+			
+			GLfloat xpos = origin_x + ch.Bearing.x * scale;
+			GLfloat ypos = origin_y - (ch.Size.y - ch.Bearing.y) * scale;
+			
+			GLfloat w = ch.Size.x * scale;
+			GLfloat h = ch.Size.y * scale;
+			// Update VBO for each character
+			GLfloat vertices[6][3] = {
+				{ xpos,     ypos + h, 0.0 },
+				{ xpos,     ypos, 0.0 },
+				{ xpos + w, ypos, 0.0 },
+				
+				{ xpos,     ypos + h, 0.0 },
+				{ xpos + w, ypos, 0.0 },
+				{ xpos + w, ypos + h, 0.0 }
+			};
+			
+			// Render glyph texture over quad
+			glBindTexture(GL_TEXTURE_2D, ch.TextureID);
+			// Update content of VBO memory
+			glBindBuffer(GL_ARRAY_BUFFER, info.text_vertices);
+			glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), &vertices[0]); // Be sure to use glBufferSubData and not glBufferData
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
+			// Render quad
+			glUniform4fv(s->u_text_color, 1, &list[i].color[0]);
+			
+			glDrawArrays(GL_TRIANGLES, 0, 6);
+			if (debug)
+			{
+				//@todo: what if you want to init it at any frame after initing the uniforms up at the top of the function?
+				glUniform1i(s->u_draw_outline, 1);
+				glUniform4f(s->u_color_location, 1, 0, 0, 1);
+				glPointSize(4.0f);
+				glDrawArrays(GL_LINE_LOOP, 0, 6);
+				glDrawArrays(GL_POINTS, 0, 6);
+				glUniform1i(s->u_draw_outline, 0);
+			}
+			// Now advance cursors for next glyph (note that advance is number of 1/64 pixels)
+			origin_x += (ch.Advance >> 6) * scale; // Bitshift by 6 to get value in pixels (2^6 = 64 (divide amount of 1/64th pixels by 64 to get amount of pixels))
+		}
+		
+	}
+	glFrontFace(GL_CW);
+	glBindVertexArray(0);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glDisable(GL_BLEND);
+	glUseProgram(0);
+}
+
+
+void render_text(text_renderer_info &info, shader *s, std::string text, vec3 pos, GLfloat scale, vec4 color,
+                 Camera *camera, bool debug)
+{
 	// Activate corresponding render state	
 	glUseProgram(s->id);
+	glEnable(GL_BLEND);
+	glFrontFace(GL_CCW);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	
 	glUniformMatrix4fv(s->u_view_location, 1, false, glm::value_ptr(camera->mat_view));
 	glUniformMatrix4fv(s->u_model_location, 1, false, glm::value_ptr(info.t.t));
@@ -641,9 +739,9 @@ void render_text(text_renderer_info &info, shader *s, std::string text, vec3 pos
 	glActiveTexture(GL_TEXTURE0);
 	glBindVertexArray(info.text_vao);
 	
-	GLfloat origin_x = 0;
-	GLfloat origin_y = 0;
-	
+	float origin_x = 0;//pos.x;
+	float origin_y = 0;//pos.y;
+	float origin_z = 0;//pos.z;
 	scale *= 0.01f;
 	
 	std::string::const_iterator c;
@@ -658,13 +756,13 @@ void render_text(text_renderer_info &info, shader *s, std::string text, vec3 pos
 		GLfloat h = ch.Size.y * scale;
 		// Update VBO for each character
 		GLfloat vertices[6][3] = {
-			{ xpos,     ypos + h, 0.0 },
-			{ xpos,     ypos, 0.0 },
-			{ xpos + w, ypos, 0.0 },
+			{ xpos,     ypos + h, origin_z },
+			{ xpos,     ypos, origin_z },
+			{ xpos + w, ypos, origin_z },
 			
-			{ xpos,     ypos + h, 0.0 },
-			{ xpos + w, ypos, 0.0 },
-			{ xpos + w, ypos + h, 0.0 }
+			{ xpos,     ypos + h, origin_z },
+			{ xpos + w, ypos, origin_z },
+			{ xpos + w, ypos + h, origin_z }
 		};
 		
 		// Render glyph texture over quad
@@ -690,6 +788,7 @@ void render_text(text_renderer_info &info, shader *s, std::string text, vec3 pos
 		// Now advance cursors for next glyph (note that advance is number of 1/64 pixels)
 		origin_x += (ch.Advance >> 6) * scale; // Bitshift by 6 to get value in pixels (2^6 = 64 (divide amount of 1/64th pixels by 64 to get amount of pixels))
 	}
+	glFrontFace(GL_CW);
 	glBindVertexArray(0);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glDisable(GL_BLEND);
