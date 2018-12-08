@@ -68,7 +68,7 @@ std::vector<unsigned int> xover;
 std::vector<unsigned int> v_index;
 std::vector<unsigned int> indices;
 map <string, unsigned int> temp_map;
-
+float VAR_G = -9.8f;
 #include "defines.cpp"
 #include "structs.cpp"
 #include "camera.cpp"
@@ -423,6 +423,8 @@ int main(int argc, char* argv[])
     
 	default_shader = create_shader("shaders/vertex_shader.txt", "shaders/fragment_shader.txt");
 	
+	cube_shader = create_shader("shaders/cube_shader.txt", "shaders/fragment_shader.txt");
+	
 	cursor_shader = create_shader("shaders/plain_shader.txt", "shaders/fragment_shader.txt");
 	text_shader = create_shader("shaders/text_shader.txt", "shaders/text_fragment.txt");
 	billboard_shader = create_shader("shaders/billboard_shader.txt", "shaders/fragment_shader.txt");
@@ -508,7 +510,7 @@ int main(int argc, char* argv[])
 	vec3 c_last, c_cur, c_dt;
 	float c_mass = 1.0f;
 	vec3 c_force;
-	float gravity = -9.8f;
+	
 	vec3 f_g;
     vec3 asd;
 	float cp_f;
@@ -542,21 +544,25 @@ int main(int argc, char* argv[])
 	star.material = default_shader;
 	star.material.color = TRAN;
 	
-	for(int i = 0; i < 180; i++)
+	int size = 32;
+	for(int x = 0; x < size; x++)
 	{
 		Entity test;
+		test.do_logic = logic;
 		vec3 p;
-		float d = i*0.25f;
-		p.x = d + cosf(i*2);
-		p.y = d + sinf(i*2);
-		p.z = d + sinf(i*2) * d + cosf(i*2);
-		test.transform.set_position(p);
-		attach_component(test, COMPONENT_MESH, star);
-		//attach_component(test, COMPONENT_MOVER, sphere);
-		model_mesh_memory[test.mesh_components[0].data_id].material.color = TRAN;
-		push_entity(test);
+		for(int y = 0; y < size; y++)
+		{
+			p = vec3(x*0.25f, y*0.25f, x*y*0.25f);
+			test.transform.set_position(p);
+			test.collider.t.set_position(p);
+			test.collider.add_force(normalize(rand_vec3(-1.0f, 1.0f)));
+			test.collider.mass = rand_frange(1.0, 24.0f);
+			attach_component(test, COMPONENT_MESH, star);
+			//attach_component(test, COMPONENT_MOVER, sphere);
+			model_mesh_memory[test.mesh_components[0].data_id].material.color = TRAN;
+			push_entity(test);
+		}
 	}
-	
 	
 	win32_sound_output SoundOutput = {};
 	SoundOutput.SamplesPerSecond = 44100;
@@ -623,7 +629,6 @@ int main(int argc, char* argv[])
 		camera.mouse_look = mouse_look;
 		
         
-        
 		vec3 p_dir = p_near - p_far;
 		vec3 p_dir_n = normalize(p_dir);
 		vec3 closest_p = p_near + p_dir_n;
@@ -637,11 +642,9 @@ int main(int argc, char* argv[])
 		rect_B.origin = mover.v;
 		rect_A.origin = vec3_zero;
 		
-		
 		//draw_rect(&default_shader, rect_A.origin, rect_A.r[0], rect_A.r[1], vec3(1), 0, 1.0f, vec4(1.0, 1.0, 0.0, 0.5f), &camera, true);
 		
 		//draw_rect(&default_shader, rect_B.origin, rect_B.r[0], rect_B.r[1], vec3(1), 0, 1.0f, vec4(1.0, 0.0, 1.0, 0.5f), &camera, true);
-        
         
 		if(resolve_rect_collisions(rect_A, rect_B))
 		{
@@ -659,11 +662,10 @@ int main(int argc, char* argv[])
 		Ray_Info ray_info;
 		cast_ray(A, ray_info, vec3_zero, input_state.mouse_w, 5.0f);
 		
-        
 		//NOTE: since acceleration formula is a = F * m/s * m/s (m/s squared).
 		//force is
         
-		vec3 force = vec3(0, gravity, 0) * 1.0f/tomato.mass;
+		vec3 force = vec3(0, VAR_G, 0) * 1.0f/tomato.mass;
         tomato.acceleration =  1.0f/tomato.mass * tomato.force + force * time_state.dt * time_state.dt * 0.5f;
         tomato.velocity += tomato.acceleration;
         //tomato.velocity * 0.2f;
@@ -739,7 +741,6 @@ int main(int argc, char* argv[])
             camera.pos = vec3_zero;
         }
         
-        
         jmodel.line_color = vec3(0.2f, 1.0f, 0.2f);
         jmodel.transform.translate(jmodel.local_position);
         
@@ -772,7 +773,6 @@ int main(int argc, char* argv[])
             //tomato.add_force(vec3(16.0f, 0, 0.9f));
             
             debug_line(n, n + r, RED+GREEN, &default_shader, &camera);
-            
         }
         
         float dist = distance(input_state.mouse_w, vec3(tomato.t.position().x, tomato.t.position().y, 0));
@@ -974,7 +974,7 @@ display_info.h = mode.h;*/
 			
 			
 			ImGui::SliderFloat("mass", &tomato.mass, 0.1f, 128.0f, "%.4f");
-			ImGui::SliderFloat("gravity", &gravity, -10.0f, 10.0f, "%.4f");
+			ImGui::SliderFloat("VAR_G", &VAR_G, -10.0f, 10.0f, "%.4f");
 			ImGui::Checkbox("fill circle", &fill_circle);
 			ImGui::SliderInt("circle_num", &circle_num, 4, 720, "%d");
 			

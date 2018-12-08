@@ -40,6 +40,42 @@ void resolve_collisions(vector<RigidBody> &t)
     }
 }
 
+
+void resolve_collision(RigidBody &t)
+{
+	if(t.t.position().y <= -2.0f)
+	{
+		vec3 dir = normalize(t.velocity);
+		vec3 nr = vec3(0, 1.0f, 0);
+		float l = dot(dir, nr);
+		vec3 r = -2.0f*l*nr + dir;
+		vec3 n = normalize(r);
+		t.t.translate(vec3(0, -2.0f - t.t.position().y, 0));
+		vec3 v = n * (0.4f * length(t.velocity)); 
+		t.velocity = v;
+		//cout << "t.velocity: " << t.velocity.y << endl;
+		debug_line(n, n + r, RED+GREEN, &default_shader, &camera);
+	}
+	else if(t.t.position().y >= 8.0f)
+	{
+		vec3 dir = normalize(t.velocity);
+		vec3 nr = vec3(0, 1.0f, 0);
+		float l = dot(dir, nr);
+		vec3 r = -2.0f*l*nr + dir;
+		vec3 n = normalize(r);
+		t.t.translate(vec3(0, 8.0f - t.t.position().y, 0));
+		vec3 v = n * (0.4f * length(t.velocity)); 
+		t.velocity = v;
+		//cout << "t.velocity: " << t.velocity.y << endl;
+		debug_line(n, n + r, RED+GREEN, &default_shader, &camera);
+	}
+	else {
+		return;
+	}
+}
+
+
+
 struct Ray_Info {
 	vec3 contact_point;
 	vec3 direction;

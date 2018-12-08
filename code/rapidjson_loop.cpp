@@ -33,17 +33,17 @@ void rapidjson_loop(Document &data, Input &input_state)
 							jvertex v;
 							string id = j[0].GetString();
 							/*int a;
-	   const char *idc = id.c_str();
-	   unsigned char j, k;
-	   j = 0;
-	   k = 0;
-	   for (unsigned char i = 0; i < strlen(idc); i++)
-	   {
-	   if (isdigit(idc[i])) j++;
-	   
-	   else k++;
-	   }
-	   if (j > 0) a = atoi(idc + k);*/
+ const char *idc = id.c_str();
+ unsigned char j, k;
+ j = 0;
+ k = 0;
+ for (unsigned char i = 0; i < strlen(idc); i++)
+ {
+ if (isdigit(idc[i])) j++;
+ 
+ else k++;
+ }
+ if (j > 0) a = atoi(idc + k);*/
 							
 							temp_map.insert(pair<string, unsigned int>(id, node_index));
 							
@@ -63,7 +63,7 @@ void rapidjson_loop(Document &data, Input &input_state)
 							
 							if (1)
 							{
-								kpl_draw_text(text_info, v.pos, v.id + ":" + to_string(v.active), 0.25f, glm::vec4(0.0, 0.2f, 0.65f, 1.0f), false);
+								kpl_draw_text(text_info, v.id + ":" + to_string(v.active),  v.pos, 0.25f, glm::vec4(0.0, 0.2f, 0.65f, 1.0f), false);
 							}
 							
 							
@@ -213,7 +213,7 @@ void rapidjson_loop(Document &data, Input &input_state)
 									//o.nodes[ai].weight = rand();
 									//o.nodes[bi].weight = rand();
 									
-									push_lines(lines_to_render, o.nodes[ai].pos, o.nodes[bi].pos, RED);
+									push_line(lines_to_render, o.nodes[ai].pos, o.nodes[bi].pos, RED);
 								}
 								//b_group.beams.push_back(b);
 							}
@@ -221,9 +221,9 @@ void rapidjson_loop(Document &data, Input &input_state)
 						}
 					}
 					/*else if (i >= m->value.Size())
-	 {
-	 o.beams.push_back(b_group);
-	 }*/
+  {
+  o.beams.push_back(b_group);
+  }*/
 				}
 			}
 			b_group.id = o.beams.size();

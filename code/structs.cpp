@@ -79,18 +79,17 @@ struct RigidBody
     vec3 acceleration;
     vec3 force;
     vec2 dim;
-    float mass;
+    float mass = 1.0f;
     void add_force(vec3 f)
     {
         force += f;
     }
     void update_physics(Time &time_state)
     {
-        vec3 g = vec3(0, -9.8f, 0) * mass;
+        vec3 g = vec3(0, VAR_G, 0) * mass;
         acceleration = 1.0f/mass * force + g * time_state.dt * time_state.dt * 0.5f;
         velocity += acceleration;
-        
-        t.translate(velocity);
+		t.translate(velocity);
         force = {};
     }
 };
@@ -108,9 +107,10 @@ struct Sphere
 };
 
 
+
+
 uc16 kON   = 1 << 0;
 uc16 kUSED = 1 << 1;
-
 
 #define set_active(button, flag) button |= flag; 
 #define set_inactive(button, flag) button &= ~flag;

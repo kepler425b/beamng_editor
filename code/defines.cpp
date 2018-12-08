@@ -23,3 +23,14 @@
 #define rand_range() (double)rand() / (double)RAND_MAX;
 #define degrees_to_radians(angle_degrees) (angle_degrees * M_PI / 180.0)
 #define clip(n, lower, upper) if (n < lower) n= lower; else if (n > upper) n= upper
+
+float rand_frange(float min, float max)
+{
+	float r = (float)rand() / (float)RAND_MAX;
+	return min + r * (max - min);
+}
+
+vec3 rand_vec3(float min, float max)
+{
+	return vec3(rand_frange(min, max), rand_frange(min, max), rand_frange(min, max));
+}

@@ -2,7 +2,7 @@ struct shader {
 	ui32 buffer_id;
 	bool is_inited = false;
 	GLuint id;
-	int u_view_location, u_model_location, u_projection_location, u_color_location, u_state, u_draw_outline, u_text_color, u_is_billboard;
+	int u_view_location, u_model_location, u_projection_location, u_color_location, u_state, u_draw_outline, u_text_color, u_is_billboard, u_velocity;
 	vector<vec4> rand_colors;
 	vec4 color;
 };
@@ -71,6 +71,8 @@ shader create_shader(char* vertexShader, char* fragmentShader)
 	result.u_text_color = glGetUniformLocation(result.id, "u_text_color");
 	//assert(result.u_text_color != -1);
 	
+	result.u_velocity = glGetUniformLocation(result.id, "u_velocity");
+	
 	result.is_inited = true;
 	
 	glUseProgram(0);
@@ -84,4 +86,5 @@ shader text_shader;
 shader billboard_shader;
 shader texture_shader;
 shader circle_shader;
+shader cube_shader;
 

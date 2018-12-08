@@ -1,3 +1,257 @@
+/*
+struct draw_list_line
+{
+ vec3 p[2];
+ vec4 c[2];
+};
+
+vector<draw_list_line> list_line;
+
+void push_line(vector<draw_list_line> *list, vec3 a, vec3 b, vec4 color)
+{
+ draw_list_line t;
+ t.p[0] = a;
+ t.p[1] = b;
+ t.c[0] = color;
+ t.c[1] = color;
+ list->push_back(t);
+}
+
+void render_line_group(vector<draw_list_line> &list, shader *s, Camera *camera)
+{
+ glUseProgram(s->id);
+ 
+ GLuint buff, buff_color;
+ glGenBuffers(1, &buff);
+ glGenBuffers(1, &buff_color);
+ glBindBuffer(GL_ARRAY_BUFFER, buff);
+ glBufferData(GL_ARRAY_BUFFER, list->size() * 2 * sizeof(vec3), &list[0], GL_DYNAMIC_DRAW);
+ glEnableVertexAttribArray(0);
+ glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(draw_list_line), 0);
+ 
+    glBindBuffer(GL_ARRAY_BUFFER, buff);
+ glBufferData(GL_ARRAY_BUFFER, list->size() * 2 * sizeof(vec3), &list[0], GL_DYNAMIC_DRAW);
+ glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(draw_list_line), (void*)(sizeof(vec3)*2));
+ glUniformMatrix4fv(s->u_view_location, 1, false, glm::value_ptr(camera->get_mat()));
+ //clear the model matrix
+ glUniformMatrix4fv(s->u_projection_location, 1, false, glm::value_ptr(camera->mat_projection));
+ 
+  glUniformMatrix4fv(s->u_model_location, 1, false, &mat4(1.0f)[0][0]);
+  glUniform1i(s->u_state, 1);
+  glDrawArrays(GL_LINES, 0, 2);
+  
+ }
+ glDisableVertexAttribArray(0);
+ glBindBuffer(GL_ARRAY_BUFFER, 0);
+ glDeleteBuffers(1, &buff);
+ glDeleteBuffers(1, &buff_color);
+ glUseProgram(0);
+ list->clear();
+}
+*/
+
+struct rg_line {
+	vector<vec3> p;
+	vector<vec4> color;
+};
+
+rg_line render_list_lines;
+
+struct rg_point {
+	vector<vec3> p;
+	vector<vec4> color;
+	vector<int> size;
+};
+
+void render_line_group(rg_line &data, shader *s, Camera *camera)
+{
+	assert(data.p.size() > 0);
+	glUseProgram(s->id);
+	
+	GLuint buff, color;
+	glGenBuffers(1, &buff);
+	glBindBuffer(GL_ARRAY_BUFFER, buff);
+	glBufferData(GL_ARRAY_BUFFER, data.p.size() * sizeof(vec3), &data.p[0], GL_DYNAMIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	
+	glGenBuffers(1, &color);
+	glBindBuffer(GL_ARRAY_BUFFER, color);
+	glEnableVertexAttribArray(1);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vec4) * data.color.size(), &data.color[0], GL_DYNAMIC_DRAW);
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, 0);
+	
+	glUniformMatrix4fv(s->u_view_location, 1, false, glm::value_ptr(camera->get_mat()));
+	//clear the model matrix
+	glUniformMatrix4fv(s->u_model_location, 1, false, &mat4(1.0f)[0][0]);
+	glUniformMatrix4fv(s->u_projection_location, 1, false, glm::value_ptr(camera->mat_projection));
+	glUniform1i(s->u_state, 0);
+	
+	//default shader should  be enabled right now 
+	//(after using different shaders, always switch to default)
+	
+	glDrawArrays(GL_LINES, 0, data.p.size());
+	
+	glDisableVertexAttribArray(0);
+	glDisableVertexAttribArray(1);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glDeleteBuffers(1, &buff);
+	glDeleteBuffers(1, &color);
+	glUseProgram(0);
+	//@kepler: clear the draw list vector after it's done, so it doesn't eat memory.
+	data = {};
+}
+
+struct rg_cube {
+	vec3 pos;
+	vec4 color;
+};
+
+vector<rg_cube> render_group_cubes;
+
+void push_cube(vector<rg_cube> *list, vec3 pos, vec4 color)
+{
+	rg_cube t;
+	t.pos = pos;
+	t.color = color;
+	list->push_back(t);
+}
+
+void render_cube_group(vector<rg_cube> &data, shader *s, Camera *camera)
+{
+	assert(data.size() > 0);
+	glUseProgram(s->id);
+	glFrontFace(GL_CCW);
+	float primitive_cube[108] = {
+		-1.0f,-1.0f,-1.0f, // triangle 1 : begin
+		-1.0f,-1.0f, 1.0f,
+		-1.0f, 1.0f, 1.0f, // triangle 1 : end
+		1.0f, 1.0f,-1.0f, // triangle 2 : begin
+		-1.0f,-1.0f,-1.0f,
+		-1.0f, 1.0f,-1.0f, // triangle 2 : end
+		1.0f,-1.0f, 1.0f,
+		-1.0f,-1.0f,-1.0f,
+		1.0f,-1.0f,-1.0f,
+		1.0f, 1.0f,-1.0f,
+		1.0f,-1.0f,-1.0f,
+		-1.0f,-1.0f,-1.0f,
+		-1.0f,-1.0f,-1.0f,
+		-1.0f, 1.0f, 1.0f,
+		-1.0f, 1.0f,-1.0f,
+		1.0f,-1.0f, 1.0f,
+		-1.0f,-1.0f, 1.0f,
+		-1.0f,-1.0f,-1.0f,
+		-1.0f, 1.0f, 1.0f,
+		-1.0f,-1.0f, 1.0f,
+		1.0f,-1.0f, 1.0f,
+		1.0f, 1.0f, 1.0f,
+		1.0f,-1.0f,-1.0f,
+		1.0f, 1.0f,-1.0f,
+		1.0f,-1.0f,-1.0f,
+		1.0f, 1.0f, 1.0f,
+		1.0f,-1.0f, 1.0f,
+		1.0f, 1.0f, 1.0f,
+		1.0f, 1.0f,-1.0f,
+		-1.0f, 1.0f,-1.0f,
+		1.0f, 1.0f, 1.0f,
+		-1.0f, 1.0f,-1.0f,
+		-1.0f, 1.0f, 1.0f,
+		1.0f, 1.0f, 1.0f,
+		-1.0f, 1.0f, 1.0f,
+		1.0f,-1.0f, 1.0f
+	};
+	
+	GLuint buff, color;
+	glGenBuffers(1, &buff);
+	glBindBuffer(GL_ARRAY_BUFFER, buff);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 108, &primitive_cube[0], GL_DYNAMIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	/*
+ glGenBuffers(1, &color);
+ glBindBuffer(GL_ARRAY_BUFFER, color);
+ glEnableVertexAttribArray(1);
+ glBufferData(GL_ARRAY_BUFFER, sizeof(vec4) * data.color.size(), &data.color[0], GL_DYNAMIC_DRAW);
+ glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, 0);
+ */
+	glUniformMatrix4fv(s->u_view_location, 1, false, glm::value_ptr(camera->get_mat()));
+	//clear the model matrix
+	glUniformMatrix4fv(s->u_projection_location, 1, false, glm::value_ptr(camera->mat_projection));
+	glUniform1i(s->u_state, 1);
+	
+	for(ui32 i = 0; i < data.size(); i++)
+	{
+		glUniform4fv(s->u_color_location, 1, &data[i].color[0]);
+		glUniformMatrix4fv(s->u_model_location, 1, false, value_ptr(glm::translate(mat4(1.0f), data[i].pos)));
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+	}
+	
+	//default shader should  be enabled right now 
+	//(after using different shaders, always switch to default)
+	
+	glDisableVertexAttribArray(0);
+	glDisableVertexAttribArray(1);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glDeleteBuffers(1, &buff);
+	glFrontFace(GL_CW);
+	glUseProgram(0);
+	//@kepler: clear the draw list vector after it's done, so it doesn't eat memory.
+	data = {};
+}
+
+void render_point_group(rg_point &data, shader *s, Camera *camera)
+{
+	assert(data.p.size() > 0);
+	glUseProgram(s->id);
+	
+	GLuint buff, color;
+	glGenBuffers(1, &buff);
+	glBindBuffer(GL_ARRAY_BUFFER, buff);
+	glBufferData(GL_ARRAY_BUFFER, data.p.size() * sizeof(vec3), &data.p[0], GL_DYNAMIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	
+	glGenBuffers(1, &color);
+	glBindBuffer(GL_ARRAY_BUFFER, color);
+	glEnableVertexAttribArray(1);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vec4) * data.color.size(), &data.color[0], GL_DYNAMIC_DRAW);
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, 0);
+	
+	glUniformMatrix4fv(s->u_view_location, 1, false, glm::value_ptr(camera->get_mat()));
+	//clear the model matrix
+	glUniformMatrix4fv(s->u_model_location, 1, false, &mat4(1.0f)[0][0]);
+	glUniformMatrix4fv(s->u_projection_location, 1, false, glm::value_ptr(camera->mat_projection));
+	glUniform1i(s->u_state, 0);
+	
+	//default shader should  be enabled right now 
+	//(after using different shaders, always switch to default)
+	glPointSize(8);
+	glDrawArrays(GL_POINTS, 0, data.p.size());
+	
+	glDisableVertexAttribArray(0);
+	glDisableVertexAttribArray(1);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glDeleteBuffers(1, &buff);
+	glDeleteBuffers(1, &color);
+	glUseProgram(0);
+	//@kepler: clear the draw list vector after it's done, so it doesn't eat memory.
+	data = {};
+}
+
+void push_line(rg_line &data, vec3 &a, vec3 &b, vec4 &color)
+{
+	data.p.push_back(a);
+	data.p.push_back(b);
+	data.color.push_back(color);
+}
+
+void push_point(rg_point &data, vec3 &p, vec4 &color, int size)
+{
+	data.p.push_back(p);
+	data.color.push_back(color);
+	data.size.push_back(size);
+}
+
 void debug_line(vec3 a, vec3 b, vec4 color, shader *s, Camera *camera)
 {
 	glUseProgram(s->id);
@@ -34,9 +288,9 @@ void debug_line(vec3 a, vec3 b, vec4 color, shader *s, Camera *camera)
 void show_basis(Transform &transform)
 {
 	float sc = 1.0f;
-	debug_line(transform.position(), transform.position() + transform.forward() * sc, RED, &default_shader, &camera);
-	debug_line(transform.position(), transform.position() + transform.up() * sc, BLUE, &default_shader, &camera);
-	debug_line(transform.position(), transform.position() + transform.right() * sc, GREEN, &default_shader, &camera);
+	push_line(render_list_lines, transform.position(), transform.position() + transform.forward() * sc, RED);
+	push_line(render_list_lines, transform.position(), transform.position() + transform.up() * sc, BLUE);
+	push_line(render_list_lines, transform.position(), transform.position() + transform.right() * sc, GREEN);
 }
 
 void draw_circle(int precision, shader *s, Camera *camera, vec4 color, vec3 pos, bool fill, float radius)
@@ -244,21 +498,6 @@ void draw_sphere(int gradation, shader *s, Camera *camera, vec4 color, vec3 pos,
 	data.clear();
 }
 
-
-
-
-
-struct rg_line {
-	vector<vec3> p;
-	vector<vec4> color;
-};
-
-struct rg_point {
-	vector<vec3> p;
-	vector<vec4> color;
-	vector<int> size;
-};
-
 void add_force(beam_pointer &b, float dt, float vel, vec3 dir)
 {
 	float f = 0;
@@ -282,99 +521,6 @@ void apply_gravity(beam_pointer &b, float vel, vec3 dir)
 	
 }
 
-
-void render_line_group(rg_line &data, shader *s, Camera *camera)
-{
-	assert(data.p.size() > 0);
-	glUseProgram(s->id);
-	
-	
-	GLuint buff, color;
-	glGenBuffers(1, &buff);
-	glBindBuffer(GL_ARRAY_BUFFER, buff);
-	glBufferData(GL_ARRAY_BUFFER, data.p.size() * sizeof(vec3), &data.p[0], GL_DYNAMIC_DRAW);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-	
-	glGenBuffers(1, &color);
-	glBindBuffer(GL_ARRAY_BUFFER, color);
-	glEnableVertexAttribArray(1);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vec4) * data.color.size(), &data.color[0], GL_DYNAMIC_DRAW);
-	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, 0);
-	
-	glUniformMatrix4fv(s->u_view_location, 1, false, glm::value_ptr(camera->get_mat()));
-	//clear the model matrix
-	glUniformMatrix4fv(s->u_model_location, 1, false, &mat4(1.0f)[0][0]);
-	glUniformMatrix4fv(s->u_projection_location, 1, false, glm::value_ptr(camera->mat_projection));
-	glUniform1i(s->u_state, 0);
-	
-	//default shader should  be enabled right now 
-	//(after using different shaders, always switch to default)
-	
-	glDrawArrays(GL_LINES, 0, data.p.size());
-	
-	glDisableVertexAttribArray(0);
-	glDisableVertexAttribArray(1);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glDeleteBuffers(1, &buff);
-	glDeleteBuffers(1, &color);
-	glUseProgram(0);
-	//@kepler: clear the draw list vector after it's done, so it doesn't eat memory.
-	data = {};
-}
-
-void render_point_group(rg_point &data, shader *s, Camera *camera)
-{
-	assert(data.p.size() > 0);
-	glUseProgram(s->id);
-	
-	GLuint buff, color;
-	glGenBuffers(1, &buff);
-	glBindBuffer(GL_ARRAY_BUFFER, buff);
-	glBufferData(GL_ARRAY_BUFFER, data.p.size() * sizeof(vec3), &data.p[0], GL_DYNAMIC_DRAW);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-	
-	glGenBuffers(1, &color);
-	glBindBuffer(GL_ARRAY_BUFFER, color);
-	glEnableVertexAttribArray(1);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vec4) * data.color.size(), &data.color[0], GL_DYNAMIC_DRAW);
-	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, 0);
-	
-	glUniformMatrix4fv(s->u_view_location, 1, false, glm::value_ptr(camera->get_mat()));
-	//clear the model matrix
-	glUniformMatrix4fv(s->u_model_location, 1, false, &mat4(1.0f)[0][0]);
-	glUniformMatrix4fv(s->u_projection_location, 1, false, glm::value_ptr(camera->mat_projection));
-	glUniform1i(s->u_state, 0);
-	
-	//default shader should  be enabled right now 
-	//(after using different shaders, always switch to default)
-	glPointSize(8);
-	glDrawArrays(GL_POINTS, 0, data.p.size());
-	
-	glDisableVertexAttribArray(0);
-	glDisableVertexAttribArray(1);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glDeleteBuffers(1, &buff);
-	glDeleteBuffers(1, &color);
-	glUseProgram(0);
-	//@kepler: clear the draw list vector after it's done, so it doesn't eat memory.
-	data = {};
-}
-
-void push_lines(rg_line &data, vec3 &a, vec3 &b, vec4 &color)
-{
-	data.p.push_back(a);
-	data.p.push_back(b);
-	data.color.push_back(color);
-}
-
-void push_point(rg_point &data, vec3 &p, vec4 &color, int size)
-{
-	data.p.push_back(p);
-	data.color.push_back(color);
-	data.size.push_back(size);
-}
 
 void debug_point(vec3 a, vec4 color, float size, shader *s)
 {
@@ -622,7 +768,6 @@ void kpl_draw_texture(texture_info &info, vec3 pos, vec3 sc, bool debug, bool bi
 	draw_texture_quad(info, &texture_shader, pos, &camera, debug, billboard);
 }
 
-
 struct draw_list_text {
 	string text;
 	vec3 pos;
@@ -658,12 +803,12 @@ void render_text_group(vector<draw_list_text> &list, text_renderer_info &info, s
 	glActiveTexture(GL_TEXTURE0);
 	glBindVertexArray(info.text_vao);
 	
-	GLfloat origin_x = 0;
-	GLfloat origin_y = 0;
 	
 	string::const_iterator c;
 	for(ui32 i = 0; i < list.size(); i++)
 	{
+		float origin_x = 0;
+		float origin_y = 0;
 		for (c = list[i].text.begin(); c != list[i].text.end(); c++)
 		{
 			glUniformMatrix4fv(s->u_model_location, 1, false, value_ptr(glm::translate(mat4(1.0f), list[i].pos)));
@@ -795,12 +940,11 @@ void render_text(text_renderer_info &info, shader *s, std::string text, vec3 pos
 	glUseProgram(0);
 }
 
-void kpl_draw_text(text_renderer_info &info, vec3 pos, string text, float sc, vec4 color, bool debug)
+void kpl_draw_text(text_renderer_info &info, string text, vec3 pos, float sc, vec4 color, bool debug)
 {
 	info.t.t = translate(mat4(1.0f), pos) * scale(mat4(1.0f), vec3(sc, sc, sc));
 	render_text(info, &text_shader, text, pos, sc, color, &camera, debug);
 }
-
 
 void draw_quad(shader *s, vec3 pos, vec3 axis, float angle, GLfloat scale, glm::vec4 color,
                Camera *camera, bool debug)

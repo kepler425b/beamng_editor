@@ -15,20 +15,28 @@ struct component_mover {
 	ui32 data_id;
 };
 
-
 struct component_logic {
 	ui32 data_id;
 };
+
+struct Entity;
+
+void logic(Entity *e);
 
 struct Entity {
 	ui32 id;
 	Transform transform;
 	vector<component_mesh_renderer> mesh_components;
 	vector<component_mover> mover_components;
-	//void (*do_logic)(Entity *);
-	//do_logic = &mouse_follower;
+	RigidBody collider;
+	void (*do_logic)(Entity *);
 };
 
+void logic(Entity *e)
+{
+	e->collider.add_force(rand_vec3(-1.0f, 1.0f));
+	e->collider.add_force(normalize(input_state.mouse_w - e->collider.t.position()));
+}
 
 void mouse_follower(Entity *e)
 {
@@ -41,12 +49,10 @@ void mouse_follower(Entity *e)
 	}
 }
 
-
 void assemble_entity(Entity &e)
 {
 	//put needed entities
 }
-
 
 vector<Entity> entities;
 void attach_component(Entity &e, Entity_Component_Type type, Model &mesh_data)
@@ -130,9 +136,7 @@ void delete_component(ui32 entity_index, Entity_Component_Type type)
 					entities[entity_index].mover_components.erase(entities[entity_index].mover_components.begin() + index);
 					mover_memory.erase(mover_memory.begin() + index);
 				}
-				
 			}
-			
 		} break;
 		
 		case COMPONENT_PRIMITIVE:
@@ -182,7 +186,9 @@ void select_entity(Entity *e)
 	
 }
 
-static float before, after, before_last, after_last, bf, af;
+static float bf, af;
+
+RigidBody *rg = 0;
 
 void process_entities()
 {
@@ -199,7 +205,7 @@ void process_entities()
 		{
 			//e->transform.translate(vec3(sinf(time_state.seconds_passed)*eid, cosf(time_state.seconds_passed)*eid, 0.0f) * (eid * time_state.dt));
 			ui32 index = e->mesh_components[e->mesh_components.size()-1].data_id;
-			render_model(model_mesh_memory[index], e->transform, &camera);
+			//render_model(model_mesh_memory[index], e->transform, &camera);
 		}
 		if(e->mover_components.size() == 1)
 		{
@@ -216,20 +222,36 @@ void process_entities()
 			delete_entity(selected_entity->id);
 			selected_entity = 0;
 		}
-		if(selected_entity)
-		{
-			draw_rect(&default_shader, selected_entity->transform.position(), 1.0f, 1.0f, vec3(1), 0.0f, 1.0f, GREEN, &camera, true);
-			push_text(&render_group_text, to_string(selected_entity->id), selected_entity->transform.position(), 0.5f, GREEN);
-			//kpl_draw_text(text_info, selected_entity->transform.position()+vec3_up*0.25f, to_string(selected_entity->id), 0.75f, GREEN, 1);
-		}
 		push_text(&render_group_text, to_string(e->id), e->transform.position(), 0.5f, BLUE);
+		e->collider.update_physics(time_state);
+		e->transform.set_position(e->collider.t.position());
+		resolve_collision(e->collider);
+		e->transform.set_position(e->collider.t.position());
+		e->do_logic(e);
+		vec4 color = TRAN * vec4(1.0f/e->collider.velocity.x, 1.0f/e->collider.velocity.x, 1.0f/e->collider.velocity.x, 1.0f) ;
+		push_cube(&render_group_cubes, e->transform.position(), color);
 	}
+	if(selected_entity)
+	{
+		draw_rect(&default_shader, selected_entity->transform.position(), 1.0f, 1.0f, vec3(1), 0.0f, 1.0f, GREEN, &camera, true);
+		push_text(&render_group_text, to_string(selected_entity->id), selected_entity->transform.position(), 0.5f, GREEN);
+		kpl_draw_text(text_info, to_string(selected_entity->id), selected_entity->transform.position()+vec3_up*0.25f, 0.75f, GREEN, 1);
+	}
+	
+	vec3 mouse_noz = input_state.mouse_w;
+	mouse_noz.z = 0.0f;
+	push_text(&render_group_text, "num of entities:" + to_string(entities.size()),  mouse_noz + vec3_up * 0.25f, 0.5f, GREEN);
+	
+	push_text(&render_group_text, to_string(input_state.mouse_w.x) + ", " + to_string(input_state.mouse_w.y) + ", " + to_string(input_state.mouse_w.z), vec3(512, 512, 0), 0.5f, GREEN);
+	
+	
 	LARGE_INTEGER tick_after_loop, tick_before_loop;
 	QueryPerformanceCounter(&tick_before_loop);
 	__int64 interval;
 	
 	render_text_group(render_group_text, text_info, &text_shader, &camera, 0);
-	
+	render_line_group(render_list_lines, &default_shader, &camera);
+	render_cube_group(render_group_cubes, &default_shader, &camera);
 	QueryPerformanceCounter(&tick_after_loop);
 	interval = tick_after_loop.QuadPart - tick_before_loop.QuadPart;
 	
