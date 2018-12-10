@@ -34,8 +34,10 @@ struct Entity {
 
 void logic(Entity *e)
 {
-	e->collider.add_force(rand_vec3(-1.0f, 1.0f));
-	e->collider.add_force(normalize(input_state.mouse_w - e->collider.t.position()));
+	vec3 p = rand_vec3(2.0f, 16.0f);
+	p.y = 6.0f;
+	e->collider.t.set_position(p);
+	e->collider.add_force(normalize(input_state.mouse_w - e->collider.t.position())*100.0f);
 }
 
 void mouse_follower(Entity *e)
@@ -179,7 +181,7 @@ Entity *selected_entity = 0;
 
 void select_entity(Entity *e)
 {
-	if(distance(e->transform.position(), input_state.mouse_w) < 0.25f && (input_state.mouse_left.state & kON))
+	if(distance(e->transform.position(), input_state.mouse_w) < 2.0f && (input_state.mouse_left.state & kON))
 	{
 		selected_entity = e;
 	}
@@ -189,7 +191,7 @@ void select_entity(Entity *e)
 static float bf, af;
 
 RigidBody *rg = 0;
-
+vec4 color;
 void process_entities()
 {
 	for(ui32 eid = 0; eid < entities.size(); eid++)
@@ -223,17 +225,44 @@ void process_entities()
 			selected_entity = 0;
 		}
 		push_text(&render_group_text, to_string(e->id), e->transform.position(), 0.5f, BLUE);
+		
+		
+		/*
+  float l0, l1;
+  l0 = e->collider.t.position().y;
+  l1 = 2.0f;
+  
+  float fdelta = (e->collider.mass * VAR_G) / 0.5f; 
+  float f = -0.5f * e->collider.mass * (l0 - l1);
+  cout << "force" << f << endl;
+  
+  e->collider.add_force(vec3(0.0f, f, 0.0f));
+  */
+		
+		if(e->do_logic && input_state.k_enter) e->do_logic(e);
+		
 		e->collider.update_physics(time_state);
 		e->transform.set_position(e->collider.t.position());
 		resolve_collision(e->collider);
 		e->transform.set_position(e->collider.t.position());
-		e->do_logic(e);
-		vec4 color = TRAN * vec4(1.0f/e->collider.velocity.x, 1.0f/e->collider.velocity.x, 1.0f/e->collider.velocity.x, 1.0f) ;
-		push_cube(&render_group_cubes, e->transform.position(), color);
+		
+		
+		
+		//e->do_logic(e);
+		
+		color =vec4(abs(e->collider.velocity.y), abs(e->collider.velocity.x), abs(e->collider.velocity.z), 1.0f);
+		
+		push_cube(&render_group_cubes, e->transform.position(), color, 1.0f);
 	}
 	if(selected_entity)
 	{
-		draw_rect(&default_shader, selected_entity->transform.position(), 1.0f, 1.0f, vec3(1), 0.0f, 1.0f, GREEN, &camera, true);
+		imgpushf("m", selected_entity->collider.mass);
+		imgpushv3f("a", selected_entity->collider.acceleration);
+		imgpushf("f", VAR_G);
+		imgpushv3f("v", selected_entity->collider.velocity);
+		imgpushv3f("v/t", selected_entity->collider.velocity * time_state.dt);
+		imgpushv4f("color", color);
+		push_cube(&render_group_cubes, selected_entity->transform.position(), GREEN, 1.25f);
 		push_text(&render_group_text, to_string(selected_entity->id), selected_entity->transform.position(), 0.5f, GREEN);
 		kpl_draw_text(text_info, to_string(selected_entity->id), selected_entity->transform.position()+vec3_up*0.25f, 0.75f, GREEN, 1);
 	}

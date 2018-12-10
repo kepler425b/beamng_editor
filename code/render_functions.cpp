@@ -105,15 +105,17 @@ void render_line_group(rg_line &data, shader *s, Camera *camera)
 struct rg_cube {
 	vec3 pos;
 	vec4 color;
+	float scale;
 };
 
 vector<rg_cube> render_group_cubes;
 
-void push_cube(vector<rg_cube> *list, vec3 pos, vec4 color)
+void push_cube(vector<rg_cube> *list, vec3 pos, vec4 color, float scale)
 {
 	rg_cube t;
 	t.pos = pos;
 	t.color = color;
+	t.scale = scale;
 	list->push_back(t);
 }
 
@@ -161,12 +163,36 @@ void render_cube_group(vector<rg_cube> &data, shader *s, Camera *camera)
 		1.0f,-1.0f, 1.0f
 	};
 	
-	GLuint buff, color;
+	float outline[24] = {
+		1.f, 1.f, 1.f,		
+		-1.f, 1.f, 1.f,			
+		-1.f, 1.f, -1.f,		
+		1.f, 1.f, -1.f,			
+		1.f, -1.f, 1.f,			
+		-1.f, -1.f, 1.f,	
+		-1.f, -1.f, -1.f,		
+		1.f, -1.f, -1.f
+	};
+	
+	
+	ui32 outline_i[16] = {
+		0, 1, 1,
+		2, 2, 3,
+		3, 4, 4,
+		5, 5, 6,
+		7, 7, 8,
+		8
+	};
+	
+	GLuint buff, buff_outline, buff_outline_i;
 	glGenBuffers(1, &buff);
 	glBindBuffer(GL_ARRAY_BUFFER, buff);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 108, &primitive_cube[0], GL_DYNAMIC_DRAW);
+	
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	
+	
 	/*
  glGenBuffers(1, &color);
  glBindBuffer(GL_ARRAY_BUFFER, color);
@@ -179,11 +205,29 @@ void render_cube_group(vector<rg_cube> &data, shader *s, Camera *camera)
 	glUniformMatrix4fv(s->u_projection_location, 1, false, glm::value_ptr(camera->mat_projection));
 	glUniform1i(s->u_state, 1);
 	
+	
 	for(ui32 i = 0; i < data.size(); i++)
 	{
 		glUniform4fv(s->u_color_location, 1, &data[i].color[0]);
-		glUniformMatrix4fv(s->u_model_location, 1, false, value_ptr(glm::translate(mat4(1.0f), data[i].pos)));
+		glUniformMatrix4fv(s->u_model_location, 1, false, value_ptr(glm::translate(mat4(1.0f), data[i].pos) * scale(mat4(1.0f), vec3(data[i].scale, data[i].scale,data[i].scale))));
 		glDrawArrays(GL_TRIANGLES, 0, 36);
+	}
+	if(0)
+	{
+		glGenBuffers(1, &buff_outline);
+		glGenBuffers(1, &buff_outline_i);
+		glBindBuffer(GL_ARRAY_BUFFER, buff_outline);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 72, &outline[0], GL_DYNAMIC_DRAW);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buff_outline_i);
+		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(ui32) * 16, &outline_i[0], GL_DYNAMIC_DRAW);
+		
+		for(ui32 i = 0; i < data.size(); i++)
+		{
+			glUniform4fv(s->u_color_location, 1, &vec4(0, 1, 0, 1)[0]);
+			glUniformMatrix4fv(s->u_model_location, 1, false, value_ptr(glm::translate(mat4(1.0f), data[i].pos) * scale(mat4(1.0f), vec3(data[i].scale, data[i].scale,data[i].scale))));
+			
+			glDrawElements(GL_LINES, 16, GL_UNSIGNED_INT, 0);
+		}
 	}
 	
 	//default shader should  be enabled right now 
@@ -255,19 +299,19 @@ void push_point(rg_point &data, vec3 &p, vec4 &color, int size)
 void debug_line(vec3 a, vec3 b, vec4 color, shader *s, Camera *camera)
 {
 	glUseProgram(s->id);
-    
+	
 	vec3 data[2];
 	data[0] = a;
 	data[1] = b;
 	assert(asize(data) == 2);
-    
+	
 	GLuint buff;
 	glGenBuffers(1, &buff);
 	glBindBuffer(GL_ARRAY_BUFFER, buff);
 	glBufferData(GL_ARRAY_BUFFER, 2 * sizeof(vec3), &data[0], GL_STATIC_DRAW);
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-    
+	
 	glUniformMatrix4fv(s->u_view_location, 1, false, glm::value_ptr(camera->get_mat()));
 	//clear the model matrix
 	glUniformMatrix4fv(s->u_model_location, 1, false, &mat4(1.0f)[0][0]);
@@ -277,7 +321,7 @@ void debug_line(vec3 a, vec3 b, vec4 color, shader *s, Camera *camera)
 	glUniform1i(s->u_state, 1);
 	glUniform4fv(s->u_color_location, 1, &color[0]);
 	glDrawArrays(GL_LINES, 0, 2);
-    
+	
 	glDisableVertexAttribArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glDeleteBuffers(1, &buff);
@@ -295,27 +339,27 @@ void show_basis(Transform &transform)
 
 void draw_circle(int precision, shader *s, Camera *camera, vec4 color, vec3 pos, bool fill, float radius)
 {
-    glUseProgram(s->id);
-    if(fill) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    else glPolygonMode(GL_FRONT_AND_BACK, GL_LINES);
-    
-    
-    //vec3 *data = (vec3*)malloc(sizeof(vec3) * precision);
-    vec3 data[32];
-    
-    for(int i = 0; i < precision; i++)
-    {
-        data[i].x = cos(2.0f * pi * i / precision) * radius;
-        data[i].y = sin(2.0f * pi * i / precision) * radius;
-    }
-    mat4 m = translate(mat4(1.0f), pos);
-    GLuint buff;
+	glUseProgram(s->id);
+	if(fill) glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	else glPolygonMode(GL_FRONT_AND_BACK, GL_LINES);
+	
+	
+	//vec3 *data = (vec3*)malloc(sizeof(vec3) * precision);
+	vec3 data[32];
+	
+	for(int i = 0; i < precision; i++)
+	{
+		data[i].x = cos(2.0f * pi * i / precision) * radius;
+		data[i].y = sin(2.0f * pi * i / precision) * radius;
+	}
+	mat4 m = translate(mat4(1.0f), pos);
+	GLuint buff;
 	glGenBuffers(1, &buff);
 	glBindBuffer(GL_ARRAY_BUFFER, buff);
 	glBufferData(GL_ARRAY_BUFFER, precision * sizeof(vec3), &data[0], GL_STATIC_DRAW);
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-    
+	
 	glUniformMatrix4fv(s->u_view_location, 1, false, glm::value_ptr(camera->get_mat()));
 	//clear the model matrix
 	glUniformMatrix4fv(s->u_model_location, 1, false, &m[0][0]);
@@ -325,12 +369,12 @@ void draw_circle(int precision, shader *s, Camera *camera, vec4 color, vec3 pos,
 	glUniform1i(s->u_state, 1);
 	glUniform4fv(s->u_color_location, 1, &color[0]);
 	glDrawArrays(GL_POLYGON, 0, precision);
-    glDrawArrays(GL_POINTS, 0, precision);
-    
+	glDrawArrays(GL_POINTS, 0, precision);
+	
 	glDisableVertexAttribArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glDeleteBuffers(1, &buff);
-    //free(data);
+	//free(data);
 }
 
 int index = 0;
@@ -338,8 +382,8 @@ float time_since;
 bool pressed = false;
 void draw_icosahedron(int gradation, shader *s, Camera *camera, vec4 color, vec3 pos, bool lines, bool fill, float radius)
 {
-    glUseProgram(s->id);
-    if(fill) glPolygonMode(GL_FRONT, GL_FILL);
+	glUseProgram(s->id);
+	if(fill) glPolygonMode(GL_FRONT, GL_FILL);
 	else glPolygonMode(GL_FRONT, GL_LINES);
 	
 	float t = (1.0 + sqrt(5.0)) / 2.0;
@@ -431,41 +475,41 @@ void draw_icosahedron(int gradation, shader *s, Camera *camera, vec4 color, vec3
 
 void draw_sphere(int gradation, shader *s, Camera *camera, vec4 color, vec3 pos, bool lines, bool fill, float radius)
 {
-    glUseProgram(s->id);
-    if(fill) glPolygonMode(GL_FRONT, GL_FILL);
+	glUseProgram(s->id);
+	if(fill) glPolygonMode(GL_FRONT, GL_FILL);
 	else glPolygonMode(GL_FRONT, GL_LINES);
 	
-    vector<vec3> data;
-    
-    float xn, yn, zn, alpha, beta;        
-    
-    for (alpha = 0.0; alpha < pi; alpha += pi/gradation)
-    {        
-        for (beta = 0.0; beta < 2.01*pi; beta += pi/gradation)            
-        {            
-            xn = radius*cos(beta)*sin(alpha);
-            yn = radius*sin(beta)*sin(alpha);
-            zn = radius*cos(alpha);
-            
-            data.push_back(vec3(xn, yn, zn));
-            xn = radius*cos(beta)*sin(alpha + pi/gradation);
-            yn = radius*sin(beta)*sin(alpha + pi/gradation);
-            zn = radius*cos(alpha + pi/gradation);            
-            
-            data.push_back(vec3(xn, yn, zn));
+	vector<vec3> data;
+	
+	float xn, yn, zn, alpha, beta;        
+	
+	for (alpha = 0.0; alpha < pi; alpha += pi/gradation)
+	{        
+		for (beta = 0.0; beta < 2.01*pi; beta += pi/gradation)            
+		{            
+			xn = radius*cos(beta)*sin(alpha);
+			yn = radius*sin(beta)*sin(alpha);
+			zn = radius*cos(alpha);
+			
+			data.push_back(vec3(xn, yn, zn));
+			xn = radius*cos(beta)*sin(alpha + pi/gradation);
+			yn = radius*sin(beta)*sin(alpha + pi/gradation);
+			zn = radius*cos(alpha + pi/gradation);            
+			
+			data.push_back(vec3(xn, yn, zn));
 			
 			xn = radius*cos(alpha); 
-            yn = radius*sin(beta)*sin(alpha);
-            zn = radius*cos(beta)*sin(alpha);
-            
-            data.push_back(vec3(xn, yn, zn));
+			yn = radius*sin(beta)*sin(alpha);
+			zn = radius*cos(beta)*sin(alpha);
 			
-            xn = radius*cos(alpha + pi/gradation);            
-            yn = radius*sin(beta)*sin(alpha + pi/gradation);
-            zn = radius*cos(beta)*sin(alpha + pi/gradation);
-            
-            data.push_back(vec3(xn, yn, zn));
-        }   
+			data.push_back(vec3(xn, yn, zn));
+			
+			xn = radius*cos(alpha + pi/gradation);            
+			yn = radius*sin(beta)*sin(alpha + pi/gradation);
+			zn = radius*cos(beta)*sin(alpha + pi/gradation);
+			
+			data.push_back(vec3(xn, yn, zn));
+		}   
 	}        
 	
 	
@@ -866,7 +910,7 @@ void render_text_group(vector<draw_list_text> &list, text_renderer_info &info, s
 
 
 void render_text(text_renderer_info &info, shader *s, std::string text, vec3 pos, GLfloat scale, vec4 color,
-                 Camera *camera, bool debug)
+				 Camera *camera, bool debug)
 {
 	// Activate corresponding render state	
 	glUseProgram(s->id);
@@ -947,7 +991,7 @@ void kpl_draw_text(text_renderer_info &info, string text, vec3 pos, float sc, ve
 }
 
 void draw_quad(shader *s, vec3 pos, vec3 axis, float angle, GLfloat scale, glm::vec4 color,
-               Camera *camera, bool debug)
+			   Camera *camera, bool debug)
 {
 	//glEnable(GL_BLEND);
 	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -996,7 +1040,7 @@ void draw_quad(shader *s, vec3 pos, vec3 axis, float angle, GLfloat scale, glm::
 }
 
 void draw_rect(shader *s, vec3 pos, float w, float h, vec3 axis, float angle, float  scale, vec4 color,
-               Camera *camera, bool debug)
+			   Camera *camera, bool debug)
 {
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -1048,7 +1092,7 @@ void draw_rect(shader *s, vec3 pos, float w, float h, vec3 axis, float angle, fl
 
 
 void draw_circle(shader *s, vec3 pos, vec3 axis, float angle, GLfloat scale, glm::vec4 color,
-                 Camera *camera, bool debug)
+				 Camera *camera, bool debug)
 {
 	//glEnable(GL_BLEND);
 	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -1133,8 +1177,8 @@ void render_model(Model &model, Transform &transform, Camera *camera)
 /*
 void draw_model(Model &model, vec3 pos, vec4 color)
 {
- model.line_color = color;
- render_model(model, &camera, &default_shader);
+model.line_color = color;
+render_model(model, &camera, &default_shader);
 }
 */
 void render_jmodel(JModel *model, Camera *camera, shader *s)

@@ -68,6 +68,7 @@ std::vector<unsigned int> xover;
 std::vector<unsigned int> v_index;
 std::vector<unsigned int> indices;
 map <string, unsigned int> temp_map;
+
 float VAR_G = -9.8f;
 #include "defines.cpp"
 #include "structs.cpp"
@@ -544,25 +545,42 @@ int main(int argc, char* argv[])
 	star.material = default_shader;
 	star.material.color = TRAN;
 	
-	int size = 32;
-	for(int x = 0; x < size; x++)
-	{
-		Entity test;
-		test.do_logic = logic;
-		vec3 p;
-		for(int y = 0; y < size; y++)
-		{
-			p = vec3(x*0.25f, y*0.25f, x*y*0.25f);
-			test.transform.set_position(p);
-			test.collider.t.set_position(p);
-			test.collider.add_force(normalize(rand_vec3(-1.0f, 1.0f)));
-			test.collider.mass = rand_frange(1.0, 24.0f);
-			attach_component(test, COMPONENT_MESH, star);
-			//attach_component(test, COMPONENT_MOVER, sphere);
-			model_mesh_memory[test.mesh_components[0].data_id].material.color = TRAN;
-			push_entity(test);
-		}
-	}
+	/*
+ int size = 8;
+ for(int x = 0; x < size; x++)
+ {
+  Entity test;
+  test.do_logic = logic;
+  vec3 p;
+  for(int y = 0; y < size; y++)
+  {
+   p = vec3(x*2.0f, 4.0f, x*2.0f);
+   test.transform.set_position(p);
+   test.collider.t.set_position(p);
+   test.collider.add_force(normalize(rand_vec3(-1.0f, 1.0f)));
+   test.collider.mass = rand_frange(1.0, 5000.0f);
+   attach_component(test, COMPONENT_MESH, star);
+   //attach_component(test, COMPONENT_MOVER, sphere);
+   model_mesh_memory[test.mesh_components[0].data_id].material.color = TRAN;
+   push_entity(test);
+  }
+ }
+ */
+	Entity lm, hm;
+	
+	hm.do_logic = logic;
+	hm.transform.set_position(vec3(0.0f, 7.0f, 0.0f));
+	hm.collider.t.set_position(vec3(0.0f, 7.0f, 0.0f));
+	
+	hm.collider.mass = 50000;
+	push_entity(hm);
+	
+	lm.do_logic = logic;
+	lm.transform.set_position(vec3(6.0f, 7.0f, 0.0f));
+	lm.collider.t.set_position(vec3(6.0f, 7.0f, 0.0f));
+	
+	lm.collider.mass = 1;
+	push_entity(lm);
 	
 	win32_sound_output SoundOutput = {};
 	SoundOutput.SamplesPerSecond = 44100;
@@ -980,53 +998,10 @@ display_info.h = mode.h;*/
 			
 			if (ImGui::TreeNode("Debug information"))
 			{
-				ImGui::Text("camera.f() = %.3f, %.3f, %.3f", camera.f().x, camera.f().y, camera.f().z);
-				ImGui::Text("camera.pos = %.3f, %.3f, %.3f", camera.pos.x, camera.pos.y, camera.pos.z);
-				ImGui::Text("sphere.f = %.3f, %.3f, %.3f", sphere.transform.forward().x, sphere.transform.forward().y, sphere.transform.forward().z);
-				ImGui::Text("sphere.r = %.3f, %.3f, %.3f", sphere.transform.right().x, sphere.transform.right().y, sphere.transform.right().z);
-				ImGui::Text("sphere.u = %.3f, %.3f, %.3f", sphere.transform.up().x, sphere.transform.up().y, sphere.transform.up().z);
-				ImGui::Text("camera dt = %.3f, %.3f, %.3f", c_dt.x, c_dt.y, c_dt.z);
-				ImGui::Text("camera velocity = %.3f, %.3f, %.3f", c_velocity.x, c_velocity.y, c_velocity.z);
-				ImGui::Text("camera view mode = %d", camera.view_mode);
-				ImGui::Text("camera force = %.3f, %.3f, %.3f", c_force.x, c_force.y, c_force.z);
-				ImGui::Text("f_g = %.3f, %.3f, %.3f", f_g.x, f_g.y, f_g.z);
-				ImGui::Text("contact point f = %.3f, %.3f, %.3f", cp_f);
-				
-				ImGui::Text("tomato.acceleration = %.3f, %.3f, %.3f", tomato.acceleration.x, tomato.acceleration.y, tomato.acceleration.z);
-				
-				ImGui::Text("tomato.force = %.3f, %.3f, %.3f", tomato.force.x, tomato.force.y, tomato.force.z);
-				ImGui::Text("tomato.pos = %.3f, %.3f, %.3f", tomato.t.position().x, tomato.t.position().y, tomato.t.position().z);
-				
-				ImGui::Text("dist = %.3f", dist);
-				ImGui::Text("render_text_group duration = %.3f", bf);
-				ImGui::Text("tomato.velocity = %.3f, %.3f, %.3f", tomato.velocity.x, tomato.velocity.y, tomato.velocity.z);
-				
-				ImGui::Text("input_state.move_dt = %.3f, %.3f, %.3f", input_state.move_dt.x, input_state.move_dt.y, input_state.move_dt.z);
-				ImGui::Text("mouse_world = %.3f, %.3f, %.3f", input_state.mouse_w.x, input_state.mouse_w.y, input_state.mouse_w.z);
-				ImGui::Text("time_state.seconds_passed: %.3f", time_state.seconds_passed);
-				ImGui::Text("time_state.fps: %.3f", time_state.fps);
-				ImGui::Text("mouse_mode_switch: %d", mouse_mode_switch);
-				ImGui::Text("input_state.m_left: %d", input_state.m_left);
-				ImGui::Text("was_pressed: %d", was_pressed);
-				ImGui::Text("input_state.lshift: %d", input_state.lshift);
-				ImGui::Text("beam_window.ishowered: %d", beam_debug_window_howered);
-				ImGui::Text("node_debug_window_howered: %d", node_debug_window_howered);
-				
-				//ImGui::Text("o + camera.f() = %.3f, %.3f, %.3f", o.x, o.y, o.z);
-				
-				
-				ImGui::Text("p_near = %.3f, %.3f, %.3f", p_near.x, p_near.y, p_near.z);
-				ImGui::Text("mouse delta = %.3f, %.3f, %.3f", mouse_delta2d.x, mouse_delta2d.y);
-				ImGui::Text("mousepos = %d, %d", input_state.mouse.x, input_state.mouse.y);
-				ImGui::Text("camera pitch yaw = %d, %d", camera.pitch, camera.yaw);
-				ImGui::Text("x, y, z = %.3f, %.3f, %.3f", camera.pos.x, camera.pos.y, camera.pos.z);
-				
-				ImGui::Text("counter = %d", counter);
-				
-				ImGui::Text("state = %d", input_state.a_right);
-				ImGui::Text("mouse_mode_switch = %d", mouse_mode_switch);
+				imgui_display_list();
 				
 				ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+				
 				ImGui::TreePop();
 			}
 			

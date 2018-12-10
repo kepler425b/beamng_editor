@@ -17,21 +17,23 @@ void resolve_collisions(vector<RigidBody> &t)
             vec3 v = n * (0.4f * length(t[i].velocity)); 
             t[i].velocity = v;
             //tomato.add_force(vec3(16.0f, 0, 0.9f));
-            
+            t[i].acceleration = vec3_zero;
+			t[i].velocity = vec3_zero;
             debug_line(n, n + r, RED+GREEN, &default_shader, &camera);
         }
-        else if(t[i].t.position().y >= 8.0f)
+        else if(t[i].t.position().y >= 80.0f)
         {
             vec3 dir = normalize(t[i].velocity);
             vec3 nr = vec3(0, 1.0f, 0);
             float l = dot(dir, nr);
             vec3 r = -2.0f*l*nr + dir;
             vec3 n = normalize(r);
-            t[i].t.translate(vec3(0, 8.0f - t[i].t.position().y, 0));
+            t[i].t.translate(vec3(0, 80.0f - t[i].t.position().y, 0));
             vec3 v = n * (0.4f * length(t[i].velocity)); 
             t[i].velocity = v;
             //tomato.add_force(vec3(16.0f, 0, 0.9f));
-            
+            t[i].acceleration = vec3_zero;
+			t[i].velocity = vec3_zero;
             debug_line(n, n + r, RED+GREEN, &default_shader, &camera);
         }
         else {

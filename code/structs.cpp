@@ -75,46 +75,53 @@ struct Time {
 struct RigidBody
 {
     Transform t;
+	bool selected;
     vec3 velocity;
     vec3 acceleration;
     vec3 force;
+	vec3 added_force;
     vec2 dim;
     float mass = 1.0f;
     void add_force(vec3 f)
     {
-        force += f;
+		added_force = f*10000.0f;
     }
     void update_physics(Time &time_state)
     {
-        vec3 g = vec3(0, VAR_G, 0) * mass;
-        acceleration = 1.0f/mass * force + g * time_state.dt * time_state.dt * 0.5f;
-        velocity += acceleration;
-		t.translate(velocity);
-        force = {};
-    }
+		float dt = time_state.dt;
+		vec3 g = vec3(0.0f, VAR_G, 0.0f);
+		
+		force = mass * g;
+		
+		//vec3 an = added_force/mass * dt;
+		//vec3 fn = mass * an;
+		
+		acceleration = (force+added_force)/mass * dt;
+		//acceleration += an;
+		
+		
+		velocity += acceleration * dt;
+        vec3 result = velocity;
+		
+		t.translate(result);
+		added_force = {};
+	}
 };
 
 struct Sphere
 {
-    float r;
-    vec3 p;
-    
-    float area()
-    {
-        float result = r - p.x * p.x + r - p.y * p.y + r - p.z * p.z;
-        return result;
-    }
+	float r;
+	vec3 p;
+	
+	float area()
+	{
+		float result = r - p.x * p.x + r - p.y * p.y + r - p.z * p.z;
+		return result;
+	}
 };
-
-
-
 
 uc16 kON   = 1 << 0;
 uc16 kUSED = 1 << 1;
-
-#define set_active(button, flag) button |= flag; 
-#define set_inactive(button, flag) button &= ~flag;
-
 
 struct key {
 	uc16 state = 0;
@@ -139,15 +146,15 @@ struct Input
 			bool a_forward;
 			bool a_backward;
 			bool lshift;
-            bool k_down;
+			bool k_down;
 			bool k_left;
 			bool k_right;
 			bool k_forward;
-            bool k_backward;
+			bool k_backward;
 			bool k_delete;
 			bool k_enter;
 			bool k_space;
-            bool k_r;
+			bool k_r;
 		};
 	};
 	bool is_pressed_m;
@@ -163,8 +170,8 @@ struct Input
 
 struct Mover {
 	vec3 v;
-    vec3 velocity;
-    vec3 acceleration;
+	vec3 velocity;
+	vec3 acceleration;
 	float x, y, z;
 };
 
