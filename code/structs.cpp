@@ -29,17 +29,17 @@ struct Transform {
     
 	vec3 forward()
 	{
-		return vec3(t[2][0], t[2][1], t[2][2]);
+		return vec3(r[2][0], r[2][1], r[2][2]);
 	}
     
 	vec3 up()
 	{
-		return vec3(t[1][0], t[1][1], t[1][2]);
+		return vec3(r[1][0], r[1][1], r[1][2]);
 	}
     
 	vec3 right()
 	{
-		return vec3(t[0][0], t[0][1], t[0][2]);
+		return vec3(r[0][0], r[0][1], r[0][2]);
 	}
     
 	void look_at(vec3 p)
@@ -57,13 +57,13 @@ struct Transform {
 		r[1][2] = forward.y; 
 		r[2][2] = forward.z; 
 	}
+	
+	void rotate(float angle, vec3 axis)
+	{
+		r *= glm::rotate(mat4(1.0f), angle, axis);
+	}
 };
 
-
-struct Collider_Rect {
-	float r[3];
-	vec3 origin;
-};
 
 struct Time {
 	float dt;
@@ -72,56 +72,14 @@ struct Time {
 	float fps;
 };
 
-struct RigidBody
-{
-    Transform t;
-	bool selected;
-    vec3 velocity;
-    vec3 acceleration;
-    vec3 force;
-	vec3 added_force;
-    vec2 dim;
-    float mass = 1.0f;
-    void add_force(vec3 f)
-    {
-		added_force = f*10000.0f;
-    }
-    void update_physics(Time &time_state)
-    {
-		float dt = time_state.dt;
-		vec3 g = vec3(0.0f, VAR_G, 0.0f);
-		
-		force = mass * g;
-		
-		//vec3 an = added_force/mass * dt;
-		//vec3 fn = mass * an;
-		
-		acceleration = (force+added_force)/mass * dt;
-		//acceleration += an;
-		
-		
-		velocity += acceleration * dt;
-        vec3 result = velocity;
-		
-		t.translate(result);
-		added_force = {};
-	}
-};
-
-struct Sphere
-{
-	float r;
-	vec3 p;
-	
-	float area()
-	{
-		float result = r - p.x * p.x + r - p.y * p.y + r - p.z * p.z;
-		return result;
-	}
-};
+Time time_state = {};
 
 uc16 kON   = 1 << 0;
 uc16 kUSED = 1 << 1;
+uc16 kAxisY = 1 << 2;
+uc16 kAxisX = 1 << 3;
+
+float MWHEEL_INCREMENT_FACTOR = 0.25f;
 
 struct key {
 	uc16 state = 0;
@@ -129,10 +87,19 @@ struct key {
 
 struct Input
 {
-	key mouse_left;
+	union 
+	{
+		key onceaframekeys[3];
+		struct
+		{
+			key mouse_left;
+			key mouse_right;
+			key mouse_wheel;
+		};
+	};
 	union
 	{
-		bool keys[18];
+		bool keys[20];
 		struct
 		{
 			bool m_left_click;
@@ -146,6 +113,7 @@ struct Input
 			bool a_forward;
 			bool a_backward;
 			bool lshift;
+			bool lctrl;
 			bool k_down;
 			bool k_left;
 			bool k_right;
@@ -155,8 +123,10 @@ struct Input
 			bool k_enter;
 			bool k_space;
 			bool k_r;
+			bool k_z;
 		};
 	};
+	float mwheel = 0.0f;
 	bool is_pressed_m;
 	fvec3 move_dt;
 	vec3  mouse_w;
@@ -167,6 +137,8 @@ struct Input
 	vec3 p_near, p_far;
 	size_t kmod;
 };
+
+static Input input_state = {};
 
 struct Mover {
 	vec3 v;
@@ -288,5 +260,4 @@ struct Character {
 };
 
 
-static Input input_state = {};
-Time time_state = {};
+

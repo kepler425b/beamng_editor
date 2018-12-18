@@ -2,91 +2,167 @@
 
 //NOTE: I should remove entities that passed out of the world by big distances.
 
-void resolve_collisions(vector<RigidBody> &t)
+void ResolveRigidBodyCollision(Entity *e)
 {
-    for(int i = 0; i < t.size(); i++)
-    {
-        if(t[i].t.position().y <= -2.0f)
-        {
-            vec3 dir = normalize(t[i].velocity);
-            vec3 nr = vec3(0, 1.0f, 0);
-            float l = dot(dir, nr);
-            vec3 r = -2.0f*l*nr + dir;
-            vec3 n = normalize(r);
-            t[i].t.translate(vec3(0, -2.0f - t[i].t.position().y, 0));
-            vec3 v = n * (0.4f * length(t[i].velocity)); 
-            t[i].velocity = v;
-            //tomato.add_force(vec3(16.0f, 0, 0.9f));
-            t[i].acceleration = vec3_zero;
-			t[i].velocity = vec3_zero;
-            debug_line(n, n + r, RED+GREEN, &default_shader, &camera);
-        }
-        else if(t[i].t.position().y >= 80.0f)
-        {
-            vec3 dir = normalize(t[i].velocity);
-            vec3 nr = vec3(0, 1.0f, 0);
-            float l = dot(dir, nr);
-            vec3 r = -2.0f*l*nr + dir;
-            vec3 n = normalize(r);
-            t[i].t.translate(vec3(0, 80.0f - t[i].t.position().y, 0));
-            vec3 v = n * (0.4f * length(t[i].velocity)); 
-            t[i].velocity = v;
-            //tomato.add_force(vec3(16.0f, 0, 0.9f));
-            t[i].acceleration = vec3_zero;
-			t[i].velocity = vec3_zero;
-            debug_line(n, n + r, RED+GREEN, &default_shader, &camera);
-        }
-        else {
-            continue;
-        }
-    }
-}
-
-
-void resolve_collision(RigidBody &t)
-{
-	if(t.t.position().y <= -2.0f)
+    
+	if(e->transform.position().y <= -2.0f)
 	{
-		vec3 dir = normalize(t.velocity);
+		vec3 dir = normalize(e->RB.velocity);
+		vec3 nr = vec3(0, 0.707f, 0.707f);
+		float l = dot(dir, nr);
+		vec3 r = -2.0f*l*nr + dir;
+		vec3 n = normalize(r);
+		e->transform.translate(vec3(0, -2.0f - e->transform.position().y, 0));
+		vec3 v = n * (0.4f * length(e->RB.velocity)); 
+		e->RB.velocity = v;
+		//tomato.add_force(vec3(16.0f, 0, 0.9f));
+		e->RB.acceleration = vec3_zero;
+		e->RB.velocity = vec3_zero;
+		debug_line(n, n + r, RED+GREEN, &default_shader, &camera);
+	}
+	else if(e->transform.position().y >= 80.0f)
+	{
+		vec3 dir = normalize(e->RB.velocity);
 		vec3 nr = vec3(0, 1.0f, 0);
 		float l = dot(dir, nr);
 		vec3 r = -2.0f*l*nr + dir;
 		vec3 n = normalize(r);
-		t.t.translate(vec3(0, -2.0f - t.t.position().y, 0));
-		vec3 v = n * (0.4f * length(t.velocity)); 
-		t.velocity = v;
-		//cout << "t.velocity: " << t.velocity.y << endl;
+		e->transform.translate(vec3(0, 80.0f - e->transform.position().y, 0));
+		vec3 v = n * (0.4f * length(e->RB.velocity)); 
+		e->RB.velocity = v;
+		//tomato.add_force(vec3(16.0f, 0, 0.9f));
+		e->RB.acceleration = vec3_zero;
+		e->RB.velocity = vec3_zero;
 		debug_line(n, n + r, RED+GREEN, &default_shader, &camera);
 	}
-	else if(t.t.position().y >= 8.0f)
+}
+
+struct AABBColInfo {
+	Collider_Rect *a;
+	Collider_Rect *b;
+	float penetration;
+	vec3 n;
+};
+
+bool AABBvsAABB(AABBColInfo *info)
+{
+	Collider_Rect *a = info->a;
+	Collider_Rect *b = info->b;
+	
+	vec2 n = a->origin - b->origin;
+	
+	float a_extenct = a->r.x /2;
+	float b_extenct = b->r.x /2;
+	
+	float x_overlap = a_extenct + b_extenct - abs(n.x);
+	
+	if(x_overlap > 0)
 	{
-		vec3 dir = normalize(t.velocity);
-		vec3 nr = vec3(0, 1.0f, 0);
-		float l = dot(dir, nr);
-		vec3 r = -2.0f*l*nr + dir;
-		vec3 n = normalize(r);
-		t.t.translate(vec3(0, 8.0f - t.t.position().y, 0));
-		vec3 v = n * (0.4f * length(t.velocity)); 
-		t.velocity = v;
-		//cout << "t.velocity: " << t.velocity.y << endl;
-		debug_line(n, n + r, RED+GREEN, &default_shader, &camera);
+		float a_extenct = a->r.y/2;
+		float b_extenct = b->r.y/2;
+		
+		float y_overlap = a_extenct + b_extenct - abs(n.y);
+		
+		if(y_overlap > 0)
+		{
+			if(n.x < 0)
+			{
+				info->n = vec3(-1, 0, 0);
+			}
+			else
+			{
+				info->n = vec3(1, 0, 0);
+				info->penetration = x_overlap;
+				return 1;
+			}
+		}
+		else
+		{
+			if(n.y < 0)
+			{
+				info->n = vec3(0, -1, 0);
+			}
+			else
+			{
+				info->n = vec3(0, 1, 0);
+				info->penetration = y_overlap;
+				return 1;
+			}
+		}
 	}
-	else {
-		return;
+	else return 0;
+}
+
+void ResolveRectCollision(Entity *a, Entity *b)
+{
+	AABBColInfo info;
+	info.a = &a->ColliderRect;
+	info.b = &b->ColliderRect;
+	
+	if(AABBvsAABB(&info))
+	{
+		
+		push_cube(&render_group_cubes, a->transform.position(), vec4(0, 0, 1, 0.5f), 1.0f);
+		push_cube(&render_group_cubes, b->transform.position(), vec4(0, 0, 1, 0.5f), 1.0f);
+		
+		vec3 rv = a->RB.velocity - b->RB.velocity;
+		vec3 n = info.n;  
+		float mag = dot(rv, n);
+		
+		if(mag > 0) return;
+		
+		float e = fmin(a->RB.e, b->RB.e);
+		
+		float j = (-(1 + e) * mag)/a->RB.mass + b->RB.mass; 
+		
+		vec3 impulse = (1 + e) * mag + j * ((j * n / a->RB.mass) + (j * n / b->RB.mass)) * n;
+		
+		a->RB.velocity -= a->RB.mass / impulse;
+		b->RB.velocity += b->RB.mass / impulse;
 	}
 }
 
 
+
+Plane ComputePlane(vec3 a, vec3 b, vec3 c)
+{
+	Plane p;
+	p.n = normalize(cross(b - a, c - a));
+	vec3 end, start, edge;
+	float dend, dstart, dedge;
+	end = normalize(b - a);
+	dend = distance(b, a);
+	start = normalize(c - a);
+	dstart = distance(c, a);
+	edge = normalize(b - c);
+	dedge = distance(b, c);
+	p.d = dot(p.n, a);
+	push_point(a, RED, 16);
+	push_point(b, GREEN, 16);
+	push_point(c, BLUE, 16);
+	
+	push_line(a, a + end * dend, RED);
+	push_line(a, a + start * dstart, GREEN);
+	push_line(c, c + edge * dedge, BLUE);
+	
+	push_line(a, a + end * 100.0f, RED);
+	push_line(a, a + start * 100.f, GREEN);
+	push_line(c, c + edge * 100.f, BLUE);
+	vec3 mid = vec3_midpoint(a, c);
+	push_line(mid, mid - p.n, TRAN);
+	
+	return p;
+}
 
 struct Ray_Info {
-	vec3 contact_point;
+	vec3 point;
 	vec3 direction;
 };
 
-bool cast_ray(Sphere &target, Ray_Info &info, vec3 origin, vec3 direction, float length)
+bool cast_ray(RigidBody_Sphere &target, Transform *transform, Ray_Info &info, vec3 origin, vec3 direction, float length)
 {
 	vec3 d = normalize(direction);
-	vec3 m = origin - target.p;
+	vec3 m = origin - transform->position();
 	float b = dot(m, d);
 	float c = dot(m, m) - target.r * target.r;
 	debug_line(origin, origin + d * length, GREEN, &default_shader, &camera);
@@ -102,25 +178,25 @@ bool cast_ray(Sphere &target, Ray_Info &info, vec3 origin, vec3 direction, float
 	
 	float t = -b - sqrt(discr);
 	
-	info.contact_point = origin + t * d;
+	info.point = origin + t * d;
 	
 	cout << "RAY COLLISION" << endl;
 	//info.contact_point = origin + (dn * ray_distance - t);
 	//info.direction = dn;
 	
-	debug_point(info.contact_point, GREEN, 16, &default_shader);
+	debug_point(info.point, GREEN, 16, &default_shader);
 	debug_line(origin, d * t, RED + GREEN, &default_shader, &camera);
 	
 	if (t < 0.0f) 
 	{
 		t = 0.0f;
-		info.contact_point = origin + t * d;
+		info.point = origin + t * d;
 		
 		cout << "RAY STARTED INSIDE SPHERE" << endl;
 		//info.contact_point = origin + (dn * ray_distance - t);
 		//info.direction = dn;
 		
-		debug_point(info.contact_point, GREEN, 16, &default_shader);
+		debug_point(info.point, GREEN, 16, &default_shader);
 		debug_line(origin, d * t, RED + GREEN, &default_shader, &camera);
 		return true;
 	}
@@ -134,8 +210,7 @@ bool resolve_rect_collisions(Collider_Rect &a, Collider_Rect &b)
 	return 1;
 }
 
-
-bool resolve_sphere_collisions(Sphere &a, Sphere &b)
+bool resolve_sphere_collisions(RigidBody_Sphere &a, RigidBody_Sphere &b)
 {
 	vec3 tmp = a.p - b.p;
 	float d = dot(tmp, tmp);
@@ -335,3 +410,7 @@ bool col2(vec3 &pA, vec3 &pB, vec3 &Target)
 	}
 	return false;
 }
+
+
+
+

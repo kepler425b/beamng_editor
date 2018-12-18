@@ -26,11 +26,8 @@ struct Camera {
 	vec3 direction;
 	vec3 origin;
     
-    
-    
     CAMERA_MODE view_mode = CMODE_FREE;
-    
-    
+	
 	float z_near;
 	float z_far;
 	float speed;
@@ -82,7 +79,7 @@ struct Camera {
     
 	vec3 f()
 	{
-		return vec3(get_mat()[2][0], get_mat()[2][1], get_mat()[2][2]);
+		return vec3(mat_view[2][0], mat_view[2][1], mat_view[2][2]);
 	}
 	vec3 u()
 	{
@@ -91,6 +88,11 @@ struct Camera {
 	vec3 r()
 	{
 		return vec3(get_mat()[0][0], get_mat()[0][1], get_mat()[0][2]);
+	}
+	
+	vec3 position()
+	{
+		return vec3(mat_view[3][0], mat_view[3][1], mat_view[3][2]);
 	}
 };
 

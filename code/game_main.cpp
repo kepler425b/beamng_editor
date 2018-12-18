@@ -77,9 +77,17 @@ float VAR_G = -9.8f;
 #include "shaders.cpp"
 #include "model.cpp"
 #include "render_functions.cpp"
-#include "collision.cpp"
 #include "file_io.cpp"
+
+#include "rigid_bodies.cpp"
+
+Plane plane1;
 #include "entities.cpp"
+#include "collision.cpp"
+#include "entity_logic.cpp"
+
+
+#include "entity_loop.cpp"
 
 //#pragma comment(lib, "Ws2_32.lib") winsock
 #pragma comment(lib, "winmm.lib")
@@ -487,7 +495,7 @@ int main(int argc, char* argv[])
 	bool is_active = 0;
 	bool node_displayed = 0;
 	vec3 vl = {};
-	Model sphere = import_model("../data/model.obj");
+	
 	
 	
 	Model star = import_model("../data/icosphere.obj");
@@ -523,17 +531,6 @@ int main(int argc, char* argv[])
 	static float fogEnd = 5.0; // Fog end z value.
 	float fogColor[4] = { 1.0, 1.0, 1.0, 0.0 };
     
-    RigidBody tomato = {};
-    tomato.mass = 1.0f;
-    tomato.dim = vec2(texture_info.dim.x, texture_info.dim.y);
-    
-    vector<RigidBody> bullets;
-    Sphere A;
-    A.r = 1.0f;
-    
-    Sphere B;
-    B.r = 1.0f;
-    
 	Collider_Rect rect_A, rect_B;
 	rect_A.r[0] = 0.4f;
 	rect_A.r[1] = 0.6f;
@@ -541,46 +538,42 @@ int main(int argc, char* argv[])
 	rect_B.r[0] = 0.2f;
 	rect_B.r[1] = 0.8f;
 	
-	sphere.material = default_shader;
+	
 	star.material = default_shader;
 	star.material.color = TRAN;
 	
-	/*
- int size = 8;
- for(int x = 0; x < size; x++)
- {
-  Entity test;
-  test.do_logic = logic;
-  vec3 p;
-  for(int y = 0; y < size; y++)
-  {
-   p = vec3(x*2.0f, 4.0f, x*2.0f);
-   test.transform.set_position(p);
-   test.collider.t.set_position(p);
-   test.collider.add_force(normalize(rand_vec3(-1.0f, 1.0f)));
-   test.collider.mass = rand_frange(1.0, 5000.0f);
-   attach_component(test, COMPONENT_MESH, star);
-   //attach_component(test, COMPONENT_MOVER, sphere);
-   model_mesh_memory[test.mesh_components[0].data_id].material.color = TRAN;
-   push_entity(test);
-  }
- }
- */
-	Entity lm, hm;
-	
-	hm.do_logic = logic;
+	Entity lm, hm, sphere, RectA;
+	push_logic(&hm, &ResetPositions);
 	hm.transform.set_position(vec3(0.0f, 7.0f, 0.0f));
-	hm.collider.t.set_position(vec3(0.0f, 7.0f, 0.0f));
-	
-	hm.collider.mass = 50000;
+	hm.RB.mass = 50000;
 	push_entity(hm);
 	
-	lm.do_logic = logic;
+	push_logic(&lm, &ResetPositions);
 	lm.transform.set_position(vec3(6.0f, 7.0f, 0.0f));
-	lm.collider.t.set_position(vec3(6.0f, 7.0f, 0.0f));
-	
-	lm.collider.mass = 1;
+	lm.RB.mass = 1;
 	push_entity(lm);
+	
+	push_logic(&sphere, &update_sphere);
+	sphere.transform.set_position(vec3(0.0f, 20.0f, 0.0f));
+	sphere.sphere.r = 1.0f;
+	sphere.sphere.mass = 40.0f;
+	push_entity(sphere);
+	
+	for(ui32 i = 0; i < 32; i++)
+	{
+		push_logic(&RectA, &ResetPositions);
+		vec3 p = rand_vec3(-2, 2);
+		RectA.transform.set_position(p);
+		RectA.ColliderRect.origin = p;
+		RectA.RB.mass = 40.0f;
+		vec3 dim = rand_vec3(0.2f, 3.0f);
+		dim.z = 0;
+		RectA.ColliderRect.r = dim; 
+		RectA.tag = COMPONENT_COLLIDER_RECT;
+		push_entity(RectA);
+	}
+	
+	
 	
 	win32_sound_output SoundOutput = {};
 	SoundOutput.SamplesPerSecond = 44100;
@@ -605,6 +598,11 @@ int main(int argc, char* argv[])
 	
 	stringstream console_log_buffer;
 	streambuf *old = cout.rdbuf(console_log_buffer.rdbuf());
+	
+	
+	Plane areplan;
+	
+	
 	while (!quit) {
 		if (isFog) glEnable(GL_FOG);
 		else glDisable(GL_FOG);
@@ -615,7 +613,7 @@ int main(int argc, char* argv[])
 		glFogf(GL_FOG_END, fogEnd);
 		glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        
+        vec2 hwin = { display_info.w / 2, display_info.h / 2 };
         
 		current_time = time_state.seconds_passed;
 		frame_rate++;
@@ -651,74 +649,27 @@ int main(int argc, char* argv[])
 		vec3 p_dir_n = normalize(p_dir);
 		vec3 closest_p = p_near + p_dir_n;
         
-        
-        A.p = vec3(1.0, 2.0, 0.0f);
-        B.p = tomato.t.position();
-        A.r = 1;
-        //stars
+		vec3 a1, b1, c1;
+		a1 = vec3(-1, 2, 0);
+		b1 = vec3(1, 4, 1);
+		c1 = vec3(-1, 2, 1);
 		
-		rect_B.origin = mover.v;
-		rect_A.origin = vec3_zero;
+		plane1 = ComputePlane(a1, b1, c1);
+		ClosestPtPointPlane(input_state.mouse_w, plane1);
 		
-		//draw_rect(&default_shader, rect_A.origin, rect_A.r[0], rect_A.r[1], vec3(1), 0, 1.0f, vec4(1.0, 1.0, 0.0, 0.5f), &camera, true);
-		
-		//draw_rect(&default_shader, rect_B.origin, rect_B.r[0], rect_B.r[1], vec3(1), 0, 1.0f, vec4(1.0, 0.0, 1.0, 0.5f), &camera, true);
-        
-		if(resolve_rect_collisions(rect_A, rect_B))
-		{
-			//draw_rect(&default_shader, rect_A.origin + vec3_forward * 0.01f, rect_A.r[0], rect_A.r[1], vec3(1), 0, 1.0f, GREEN, &camera, true);
-		}
-        
-        //draw_sphere(circle_num, &default_shader, &camera, vec4(0.2f, 0.5f, 0.8f, 0.5f), A.p, fill_circle, true, A.r);
-        
-        //draw_sphere(circle_num, &default_shader, &camera, vec4(0.2f, 0.8f, 0.1f, 0.5f), B.p, fill_circle, true, B.r);
-        
-		//draw_icosahedron(circle_num, &default_shader, &camera, vec4(0.2f, 0.5f, 0.8f, 0.5f), vec3_right + -vec3_up, fill_circle, true, A.r);
-        
-        if(resolve_sphere_collisions(A, B)) debug_point(B.p, RED + GREEN, 100, &default_shader);
-        
-		Ray_Info ray_info;
-		cast_ray(A, ray_info, vec3_zero, input_state.mouse_w, 5.0f);
-		
-		//NOTE: since acceleration formula is a = F * m/s * m/s (m/s squared).
-		//force is
-        
-		vec3 force = vec3(0, VAR_G, 0) * 1.0f/tomato.mass;
-        tomato.acceleration =  1.0f/tomato.mass * tomato.force + force * time_state.dt * time_state.dt * 0.5f;
-        tomato.velocity += tomato.acceleration;
-        //tomato.velocity * 0.2f;
-        tomato.t.translate(tomato.velocity);
-        tomato.force = vec3_zero;
-        c_cur = camera.pos;
-        
-        c_velocity = c_dt * time_state.dt;
-        
-        c_force = 1.0f * c_velocity;
-        
-        for(int i = 0; i < bullets.size(); i++)
-        {
-            bullets[i].update_physics(time_state);
-        }
-        
-        
-        if(input_state.k_r)
-        {
-            tomato.t.set_position(vec3(0, 4, 0));
-            tomato.velocity = {};
-            //camera.pos = vec3_up;
-        }
-        
-        if (input_state.k_space)
-        {
-            f_g += vec3(0, 0.5f, 0);
-            input_state.k_space = false;
-        }
-        
-        vec2 hwin = { display_info.w / 2, display_info.h / 2 };
         
         float dt = time_state.dt;
         vec2 mdt = vec2(input_state.mouse_dt2.x, input_state.mouse_dt2.y);
         
+		imgpushi("ctrl", input_state.lctrl);
+		imgpushi("mwheel", input_state.mouse_wheel.state & kON);
+		imgpushi("mwheel axis y", input_state.mouse_wheel.state & kAxisY);
+		imgpushi("mwheel axis x", input_state.mouse_wheel.state & kAxisX);
+		if(input_state.lctrl && (input_state.mouse_wheel.state & kON))
+		{
+			if(input_state.mouse_wheel.state & kAxisY) camera.zoom -= ZOOM_SENSITIVITY; 
+			if(input_state.mouse_wheel.state & kAxisX) camera.zoom += ZOOM_SENSITIVITY; 
+		}
         if (camera.view_mode == CMODE_FREE)
         {
             if (camera.mouse_look)
@@ -777,101 +728,6 @@ int main(int argc, char* argv[])
 		//rapidjson_loop(document, input_state);
         
         
-		vec3 v;
-        if(tomato.t.position().y <= -2.0f)
-        {
-            vec3 dir = normalize(tomato.velocity);
-            vec3 nr = vec3(0, 1.0f, 0);
-            float l = dot(dir, nr);
-            vec3 r = -2*l*nr + dir;
-            vec3 n = normalize(r);
-            tomato.t.translate(vec3(0, -2.0 - tomato.t.position().y, 0));
-            v = n * (0.4f * length(tomato.velocity));
-            tomato.velocity = v;
-            //tomato.add_force(vec3(16.0f, 0, 0.9f));
-            
-            debug_line(n, n + r, RED+GREEN, &default_shader, &camera);
-        }
-        
-        float dist = distance(input_state.mouse_w, vec3(tomato.t.position().x, tomato.t.position().y, 0));
-        
-        if (dist < 1.0f  && input_state.m_left)
-        {
-            
-            ss = true;
-        }
-        if (ss)
-        {
-            tomato.add_force(vec3(input_state.mouse_dt2.x, -input_state.mouse_dt2.y, 0) * 0.001f);
-            if (!input_state.m_left) ss = false;
-        }
-        //if(dist < 1.0f) draw_quad(&default_shader, tomato.t.position(), vec3_up, 0, 1.0f, GREEN, &camera, true);
-        
-        float strength = 2.0f;
-        if(input_state.a_up) tomato.add_force(vec3(0, 1.0f, 0)* strength);
-        
-        if(input_state.a_down) tomato.add_force(vec3(0, -1.0f, 0)* strength);
-        
-        if(input_state.a_left) tomato.add_force(vec3(-1.0f, 0, 0)* strength);
-        
-        if(input_state.a_right) tomato.add_force(vec3(1.0f, 0, 0)* strength);
-        
-        static float delay;
-        if(time_state.seconds_passed > delay + 0.5f && input_state.m_left){
-            RigidBody t;
-            t.t.position() = tomato.t.position();
-            t.acceleration = {};
-            t.mass = 8.0f;
-            t.add_force(camera.forward * 100.5f);
-            bullets.push_back(t);
-            delay = time_state.seconds_passed;
-        }
-        
-        
-        for(int i = 0; i < bullets.size(); i++)
-        {
-            bullets[i].update_physics(time_state);
-        }
-        
-        
-        resolve_collisions(bullets);
-        /*
-        kpl_draw_texture(texture_info, tomato.t.position(), vec3(1, 1, 1), show_outline, is_billboard);
-        */
-        
-        for(int i = 0; i < bullets.size(); i++)
-        {
-            /*
-            kpl_draw_texture(texture_info, bullets[i].t.position(), vec3(1.0f, 1.0f, 1.0f), show_outline, is_billboard); */
-            //draw_sphere(circle_num, &default_shader, &camera, vec4(0.7f, 0.2f, 0.8f, 0.5f), bullets[i].t.position(), fill_circle, true, 1.0f);
-        }
-        
-        
-        debug_line(tomato.t.position(), tomato.t.position() + tomato.velocity * 10000.0f, BLUE + GREEN, &default_shader, &camera);
-        
-        //debug_line(tomato.t.position(), input_state.mouse_w - tomato.t.position(), BLUE + RED, &default_shader, &camera);
-        
-        debug_point(tomato.t.position(), BLUE, 8, &default_shader);
-        
-        for (int y = -circle_width; y <= circle_width; y++)
-        {
-            for (int x = -circle_width; x <= circle_width; x++)
-            {
-                if (x*x + y * y <= circle_width * circle_width)
-                {
-                    debug_point(vec3(x, y, 0), GREEN, 10, &default_shader);
-                }
-            }
-        }
-        
-		
-		//sphere.line_color = vec3(0.2f, 1.0f, 0.2f);
-		//sphere.pos = vec3_zero;
-		sphere.transform.set_position(p);
-		sphere.transform.look_at(p);
-		render_model(sphere, sphere.transform, &camera);
-		sphere.material.color = vec4(cosf(time_state.seconds_passed * time_state.dt),sinf(time_state.seconds_passed * time_state.dt), sinf(time_state.seconds_passed), 1);
-		show_basis(sphere.transform);
 		
 		
 		static float last_time;
@@ -888,7 +744,7 @@ int main(int argc, char* argv[])
   }
   */
 		static float delay_shoot;
-		if(time_state.seconds_passed > delay_shoot + 0.5f && input_state.m_left)
+		if(time_state.seconds_passed > delay_shoot + 0.5f && input_state.mouse_left.state & kON)
 		{
 			SoundBuffer.GlobalSecondaryBuffer->SetCurrentPosition(0);
 			SoundBuffer.GlobalSecondaryBuffer->SetVolume(volume);
@@ -905,23 +761,7 @@ int main(int argc, char* argv[])
 		
 		//HRESULT result = SoundBuffer.GlobalSecondaryBuffer->Play(0, 0, 0);
 		
-		//cout << result << endl;
-		
 		process_entities();
-		
-		//cout << (input_state.mouse_left.state << 1) << (input_state.mouse_left.state << 2) << endl;
-		
-		if(time_state.seconds_passed > delay + 0.05f)
-		{
-			//delete_entity(entities.size());
-			//delay = time_state.seconds_passed;
-		}
-		
-		/*
-for(int i = 0; i < circle_num; i++)
-{
-draw_circle(circle_num, &default_shader, &camera, TRAN, p*(i*2.0f), fill_circle, 0.5f);
-}*/
 		
 		p_near = get_mouse_3d(0.0, camera);
 		p_far = get_mouse_3d(1.0, camera);
@@ -990,8 +830,6 @@ display_info.h = mode.h;*/
 			ImGui::SliderFloat("sound_delay", &sound_delay, 0.01f, 5.0f, "%.3f");
 			
 			
-			
-			ImGui::SliderFloat("mass", &tomato.mass, 0.1f, 128.0f, "%.4f");
 			ImGui::SliderFloat("VAR_G", &VAR_G, -10.0f, 10.0f, "%.4f");
 			ImGui::Checkbox("fill circle", &fill_circle);
 			ImGui::SliderInt("circle_num", &circle_num, 4, 720, "%d");
@@ -1106,7 +944,15 @@ display_info.h = mode.h;*/
 		was_pressed = input_state.m_left;
 		input_state.k_delete = false;
 		input_state.k_enter = false;
-		set_inactive(input_state.mouse_left.state, kON);
+		
+		
+		for(ui32 i = 0; i < asize(input_state.onceaframekeys); i++)
+		{
+			set_inactive(input_state.onceaframekeys[i].state, kON);
+			set_inactive(input_state.mouse_wheel.state, kAxisX);
+			set_inactive(input_state.mouse_wheel.state, kAxisY);
+		}
+		
 		//tomato.velocity = tomato.vl - tomato.vc;
 		//tomato.vl = tomato.vc;
 		

@@ -122,3 +122,8 @@ vec3 rand_vec3(float min, float max)
 {
 	return vec3(rand_frange(min, max), rand_frange(min, max), rand_frange(min, max));
 }
+
+vec2 rand_vec2(float min, float max)
+{
+	return vec2(rand_frange(min, max), rand_frange(min, max));
+}

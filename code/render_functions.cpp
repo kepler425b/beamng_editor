@@ -63,11 +63,13 @@ struct rg_point {
 	vector<int> size;
 };
 
+rg_point points;
+
 void render_line_group(rg_line &data, shader *s, Camera *camera)
 {
 	assert(data.p.size() > 0);
 	glUseProgram(s->id);
-	
+	glLineWidth(3.0f);
 	GLuint buff, color;
 	glGenBuffers(1, &buff);
 	glBindBuffer(GL_ARRAY_BUFFER, buff);
@@ -124,6 +126,9 @@ void render_cube_group(vector<rg_cube> &data, shader *s, Camera *camera)
 	assert(data.size() > 0);
 	glUseProgram(s->id);
 	glFrontFace(GL_CCW);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	
 	float primitive_cube[108] = {
 		-1.0f,-1.0f,-1.0f, // triangle 1 : begin
 		-1.0f,-1.0f, 1.0f,
@@ -237,6 +242,7 @@ void render_cube_group(vector<rg_cube> &data, shader *s, Camera *camera)
 	glDisableVertexAttribArray(1);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glDeleteBuffers(1, &buff);
+	glEnable(GL_BLEND);
 	glFrontFace(GL_CW);
 	glUseProgram(0);
 	//@kepler: clear the draw list vector after it's done, so it doesn't eat memory.
@@ -282,18 +288,19 @@ void render_point_group(rg_point &data, shader *s, Camera *camera)
 	data = {};
 }
 
-void push_line(rg_line &data, vec3 &a, vec3 &b, vec4 &color)
+void push_line(vec3 &a, vec3 &b, vec4 &color)
 {
-	data.p.push_back(a);
-	data.p.push_back(b);
-	data.color.push_back(color);
+	render_list_lines.p.push_back(a);
+	render_list_lines.p.push_back(b);
+	render_list_lines.color.push_back(color);
+	render_list_lines.color.push_back(color);
 }
 
-void push_point(rg_point &data, vec3 &p, vec4 &color, int size)
+void push_point(vec3 &p, vec4 &color, int size)
 {
-	data.p.push_back(p);
-	data.color.push_back(color);
-	data.size.push_back(size);
+	points.p.push_back(p);
+	points.color.push_back(color);
+	points.size.push_back(size);
 }
 
 void debug_line(vec3 a, vec3 b, vec4 color, shader *s, Camera *camera)
@@ -332,9 +339,9 @@ void debug_line(vec3 a, vec3 b, vec4 color, shader *s, Camera *camera)
 void show_basis(Transform &transform)
 {
 	float sc = 1.0f;
-	push_line(render_list_lines, transform.position(), transform.position() + transform.forward() * sc, RED);
-	push_line(render_list_lines, transform.position(), transform.position() + transform.up() * sc, BLUE);
-	push_line(render_list_lines, transform.position(), transform.position() + transform.right() * sc, GREEN);
+	push_line(transform.position(), transform.position() + transform.forward() * sc, RED);
+	push_line(transform.position(), transform.position() + transform.up() * sc, BLUE);
+	push_line(transform.position(), transform.position() + transform.right() * sc, GREEN);
 }
 
 void draw_circle(int precision, shader *s, Camera *camera, vec4 color, vec3 pos, bool fill, float radius)
@@ -473,73 +480,123 @@ void draw_icosahedron(int gradation, shader *s, Camera *camera, vec4 color, vec3
 }
 
 
-void draw_sphere(int gradation, shader *s, Camera *camera, vec4 color, vec3 pos, bool lines, bool fill, float radius)
+void draw_sphere(int sectorCount, int stackCount, shader *shader, Camera *camera, vec4 color, vec3 pos, float angle, vec3 axis,  bool lines, bool fill, float radius)
 {
-	glUseProgram(s->id);
+	glUseProgram(shader->id);
 	if(fill) glPolygonMode(GL_FRONT, GL_FILL);
 	else glPolygonMode(GL_FRONT, GL_LINES);
+	glFrontFace(GL_CW);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	
-	vector<vec3> data;
+	vector<vec3> vertices;
+	vector<vec3> normals;
+	vector<vec2> uv;
 	
-	float xn, yn, zn, alpha, beta;        
+	float lengthInverse = 1.0f/radius;
+	float sectorStep = 2*pi/sectorCount;
+	float stackStep  = pi/stackCount;
+	float sectorAngle, stackAngle;
+	float xy, z, x, y;
+	float nx, ny, nz;
+	float s, t;
 	
-	for (alpha = 0.0; alpha < pi; alpha += pi/gradation)
-	{        
-		for (beta = 0.0; beta < 2.01*pi; beta += pi/gradation)            
-		{            
-			xn = radius*cos(beta)*sin(alpha);
-			yn = radius*sin(beta)*sin(alpha);
-			zn = radius*cos(alpha);
+	for(ui32 i = 0; i <= stackCount; i++)
+	{
+		stackAngle = pi/2-i*stackStep;
+		xy = radius * cosf(stackAngle);
+		z = radius * sinf(stackAngle);
+		
+		for(ui32 j = 0; j <= sectorCount; j++)
+		{
+			sectorAngle = j * sectorStep;
 			
-			data.push_back(vec3(xn, yn, zn));
-			xn = radius*cos(beta)*sin(alpha + pi/gradation);
-			yn = radius*sin(beta)*sin(alpha + pi/gradation);
-			zn = radius*cos(alpha + pi/gradation);            
+			x = xy * cosf(sectorAngle);
+			y = xy * sinf(sectorAngle);
+			vertices.push_back(vec3(x,y,z));
 			
-			data.push_back(vec3(xn, yn, zn));
+			nx = x * lengthInverse;
+			ny = y * lengthInverse;
+			nz = z * lengthInverse;
+			normals.push_back(vec3(nx, ny, nz));
 			
-			xn = radius*cos(alpha); 
-			yn = radius*sin(beta)*sin(alpha);
-			zn = radius*cos(beta)*sin(alpha);
+			s = (float)i / sectorCount;
+			t = (float)j / stackCount;
+			uv.push_back(vec2(s, t));
+		}
+	}
+	vector<int> indices;
+	int k1, k2;
+	for(int i = 0; i < stackCount; ++i)
+	{
+		k1 = i * (sectorCount + 1);     // beginning of current stack
+		k2 = k1 + sectorCount + 1;      // beginning of next stack
+		
+		for(int j = 0; j < sectorCount; ++j, ++k1, ++k2)
+		{
+			// 2 triangles per sector excluding 1st and last stacks
+			if(i != 0)
+			{
+				indices.push_back(k1);
+				indices.push_back(k2);
+				indices.push_back(k1 + 1);
+			}
 			
-			data.push_back(vec3(xn, yn, zn));
-			
-			xn = radius*cos(alpha + pi/gradation);            
-			yn = radius*sin(beta)*sin(alpha + pi/gradation);
-			zn = radius*cos(beta)*sin(alpha + pi/gradation);
-			
-			data.push_back(vec3(xn, yn, zn));
-		}   
-	}        
+			if(i != (stackCount-1))
+			{
+				indices.push_back(k1 + 1);
+				indices.push_back(k2);
+				indices.push_back(k2 + 1);
+			}
+		}
+	}
 	
+	mat4 m = translate(mat4(1.0f), pos) * rotate(mat4(1.0f), angle, axis);
 	
-	mat4 m = translate(mat4(1.0f), pos);
-	GLuint buff;
+	GLuint buff, index_buff;
 	glGenBuffers(1, &buff);
+	glGenBuffers(1, &index_buff);
 	glBindBuffer(GL_ARRAY_BUFFER, buff);
-	glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(vec3), &data[0], GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(vec3), &vertices[0], GL_STATIC_DRAW);
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 	
-	glUniformMatrix4fv(s->u_view_location, 1, false, glm::value_ptr(camera->get_mat()));
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buff);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER,           // target
+				 indices.size() * sizeof(int),             // data size, bytes
+				 &indices[0],               // ptr to index data
+				 GL_STATIC_DRAW);          
+	
+	
+	glUniformMatrix4fv(shader->u_view_location, 1, false, glm::value_ptr(camera->get_mat()));
 	//clear the model matrix
-	glUniformMatrix4fv(s->u_model_location, 1, false, &m[0][0]);
-	glUniformMatrix4fv(s->u_projection_location, 1, false, glm::value_ptr(camera->mat_projection));
+	glUniformMatrix4fv(shader->u_model_location, 1, false, &m[0][0]);
+	glUniformMatrix4fv(shader->u_projection_location, 1, false, glm::value_ptr(camera->mat_projection));
 	//default shader should  be enabled right now 
 	//(after using different shaders, always switch to default)
-	glUniform1i(s->u_state, 1);
-	glUniform4fv(s->u_color_location, 1, &color[0]);
+	glUniform1i(shader->u_state, 1);
+	glUniform4fv(shader->u_color_location, 1, &color[0]);
 	
-	glDrawArrays(GL_POLYGON, 0, data.size());
+	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 	
-	glUniform4fv(s->u_color_location, 1, &vec4(1)[0]);
-	if(lines ) glDrawArrays(GL_LINES, 0, data.size());
-	else glDrawArrays(GL_POINTS, 0, data.size());
+	glUniform4fv(shader->u_color_location, 1, &vec4(1, 0, 0, 0.25f)[0]);
+	if(lines ) glDrawElements(GL_LINES, indices.size(), GL_UNSIGNED_INT, 0);
+	else glDrawElements(GL_POINTS, indices.size(), GL_UNSIGNED_INT, 0);
 	
 	glDisableVertexAttribArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glDeleteBuffers(1, &buff);
-	data.clear();
+	glDeleteBuffers(1, &index_buff);
+	glFrontFace(GL_CCW);
+	glDisable(GL_BLEND);
+	vertices.clear();
+	uv.clear();
+	normals.clear();
+}
+
+void kplDrawSphere(vec3 pos, float angle, vec3 axis, float radius, int sectorCount, int stackCount, vec4 color, bool lines, bool fill)
+{
+	draw_sphere(sectorCount, stackCount, &default_shader, &camera, color, pos, angle, axis, lines, fill, radius);
 }
 
 void add_force(beam_pointer &b, float dt, float vel, vec3 dir)
@@ -1048,13 +1105,15 @@ void draw_rect(shader *s, vec3 pos, float w, float h, vec3 axis, float angle, fl
 	
 	// Activate corresponding render state	
 	glUseProgram(s->id);
+	mat4 r = rotate(mat4(1.0f), angle, axis);
+	mat4 m = glm::translate(mat4(1.0f), pos);
 	
-	mat4 m = glm::translate(mat4(1.0f), pos) * rotate(mat4(1.0f), angle, axis);
 	
 	glUniformMatrix4fv(s->u_view_location, 1, false, glm::value_ptr(camera->mat_view));
 	glUniformMatrix4fv(s->u_model_location, 1, false, glm::value_ptr(m));
 	glUniformMatrix4fv(s->u_projection_location, 1, false, glm::value_ptr(camera->mat_projection));
 	glUniform4fv(s->u_color_location, 1, &color[0]);
+	glUniform1i(s->u_state, 1);
 	
 	GLfloat vertices[] = 
 	{ 0, 0, 0, // bottom left corner
@@ -1090,6 +1149,64 @@ void draw_rect(shader *s, vec3 pos, float w, float h, vec3 axis, float angle, fl
 	debug_point(pos, vec4(1), 8, &default_shader);
 }
 
+
+void DrawRect(vec3 pos, float w, float h, Transform *t, shader *s, vec4 color,
+			  Camera *camera, bool debug)
+{
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glDisable(GL_CULL_FACE);
+	
+	// Activate corresponding render state	
+	glUseProgram(s->id);
+	
+	//mat4 m = glm::translate(mat4(1.0f), pos) * rotate(mat4(1.0f), angle, axis);
+	
+	glUniformMatrix4fv(s->u_view_location, 1, false, glm::value_ptr(camera->mat_view));
+	glUniformMatrix4fv(s->u_model_location, 1, false, glm::value_ptr(mat4(1.0f)));
+	glUniformMatrix4fv(s->u_projection_location, 1, false, glm::value_ptr(camera->mat_projection));
+	glUniform4fv(s->u_color_location, 1, &color[0]);
+	
+	
+	vec3 p = pos; 
+	
+	vec3 r = t->right();
+	vec3 u = t->up();
+	vec3 f = t->forward();
+	vec3 vertices[] = 
+	{   p, // bottom left corner
+		p + u * h, // top left corner
+		p + (u * h) + (r * w), // top right corner
+		p + r * w}; // bottom right corner
+	
+	push_line(p, p + u, GREEN);
+	
+	GLuint buff;
+	glGenBuffers(1, &buff);
+	glBindBuffer(GL_ARRAY_BUFFER, buff);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 12, &vertices[0], GL_DYNAMIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	
+	glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+	if (debug)
+	{
+		//@todo: what if you want to init it at any frame after initing the uniforms up at the top of the function?
+		glUniform1i(s->u_draw_outline, 1);
+		glUniform4f(s->u_color_location, 1, 0, 0, 1);
+		glPointSize(1.0f);
+		glDrawArrays(GL_LINE_LOOP, 0, 4);
+		glDrawArrays(GL_POINTS, 0, 4);
+		glUniform1i(s->u_draw_outline, 0);
+	}
+	glDisableVertexAttribArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	//glDisable(GL_BLEND);
+	glDeleteBuffers(1, &buff);
+	glUseProgram(0);
+	glEnable(GL_CULL_FACE);
+	glDisable(GL_BLEND);
+}
 
 void draw_circle(shader *s, vec3 pos, vec3 axis, float angle, GLfloat scale, glm::vec4 color,
 				 Camera *camera, bool debug)

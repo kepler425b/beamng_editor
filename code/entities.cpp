@@ -1,10 +1,12 @@
 vector<Model> model_mesh_memory;
 vector<Mover> mover_memory;
+vector<ui32> RectIDS;
 
 enum Entity_Component_Type {
 	COMPONENT_MESH,
 	COMPONENT_PRIMITIVE,
-	COMPONENT_MOVER
+	COMPONENT_MOVER,
+	COMPONENT_COLLIDER_RECT
 };
 
 struct component_mesh_renderer {
@@ -21,24 +23,60 @@ struct component_logic {
 
 struct Entity;
 
-void logic(Entity *e);
+#define MACRODefineEntityLogic(name, arg) void *name(arg)
+
+void ResetPositions(Entity *e);
+void sphere_collider(Entity *e);
+
+struct EntityLogic {
+	string name;
+	bool enabled;
+	void (*FuncPtr)(Entity *);
+};
 
 struct Entity {
 	ui32 id;
+	ui32 tag;
 	Transform transform;
 	vector<component_mesh_renderer> mesh_components;
 	vector<component_mover> mover_components;
-	RigidBody collider;
-	void (*do_logic)(Entity *);
+	RigidBody RB;
+	Collider_Rect ColliderRect;
+	vector<EntityLogic> LogicContainer;
+	RigidBody_Sphere sphere;
 };
 
-void logic(Entity *e)
+void push_logic(Entity *e, void (*func)(Entity *))
 {
-	vec3 p = rand_vec3(2.0f, 16.0f);
-	p.y = 6.0f;
-	e->collider.t.set_position(p);
-	e->collider.add_force(normalize(input_state.mouse_w - e->collider.t.position())*100.0f);
+	EntityLogic t;
+	t.enabled = 1;
+	t.FuncPtr = func;
+	e->LogicContainer.push_back(t);
 }
+
+void ResetPositions(Entity *e)
+{
+	if(input_state.k_enter)
+	{
+		vec3 p = rand_vec3(2.0f, 16.0f);
+		p.y = 6.0f;
+		e->transform.set_position(p);
+		//e->collider.add_force(normalize(input_state.mouse_w - e->collider.t.position())*100.0f);
+	}
+}
+
+void update_sphere(Entity *e)
+{
+	e->sphere.update_physics(&e->transform, time_state, &plane1); 
+	e->sphere.update_collisions(&e->transform, &plane1);
+	//e->sphere.apply_torque(input_state.mouse_w.x *0.00001f);
+	kplDrawSphere(e->transform.position(), 0, vec3_forward, 1.0f, 16, 16, vec4(1, 0, 0, 0.25f), 1, 1);
+	if(input_state.k_enter)
+	{
+		e->transform.set_position(vec3_zero);
+	}
+}
+
 
 void mouse_follower(Entity *e)
 {
@@ -96,6 +134,10 @@ void push_entity(Entity &e)
 {
 	e.id = entities.size();
 	entities.push_back(e);
+	if(e.tag == COMPONENT_COLLIDER_RECT)
+	{
+		RectIDS.push_back(e.id);
+	}
 }
 
 void delete_entity(ui32 id)
@@ -177,118 +219,38 @@ Model* get_mesh_component(int entity_id)
 	}
 }
 
-Entity *selected_entity = 0;
-
-void select_entity(Entity *e)
+void RB_AddForce(RigidBody *rb, vec3 f)
 {
-	if(distance(e->transform.position(), input_state.mouse_w) < 2.0f && (input_state.mouse_left.state & kON))
-	{
-		selected_entity = e;
-	}
-	
+	rb->added_force = f * rb->mass;
 }
-
-static float bf, af;
-
-RigidBody *rg = 0;
-vec4 color;
-void process_entities()
+void RB_UpdatePhysics(Entity *e, Time &time_state)
 {
-	for(ui32 eid = 0; eid < entities.size(); eid++)
-	{
-		Entity *e = &entities[eid];
-		
-		if(e->id == -1)
-		{
-			cout << "skipped entity id: " << e->id << endl;
-			continue;
-		}
-		if(e->mesh_components.size() > 0)
-		{
-			//e->transform.translate(vec3(sinf(time_state.seconds_passed)*eid, cosf(time_state.seconds_passed)*eid, 0.0f) * (eid * time_state.dt));
-			ui32 index = e->mesh_components[e->mesh_components.size()-1].data_id;
-			//render_model(model_mesh_memory[index], e->transform, &camera);
-		}
-		if(e->mover_components.size() == 1)
-		{
-			ui32 index = e->mover_components[e->mover_components.size()-1].data_id;
-			update_movers(e->transform, 1.0f, input_state, time_state);
-		}
-		if(display_info.show_entity_bases)
-		{
-			show_basis(e->transform);
-		}
-		select_entity(e);
-		if(selected_entity && input_state.k_delete)
-		{
-			delete_entity(selected_entity->id);
-			selected_entity = 0;
-		}
-		push_text(&render_group_text, to_string(e->id), e->transform.position(), 0.5f, BLUE);
-		
-		
-		/*
-  float l0, l1;
-  l0 = e->collider.t.position().y;
-  l1 = 2.0f;
-  
-  float fdelta = (e->collider.mass * VAR_G) / 0.5f; 
-  float f = -0.5f * e->collider.mass * (l0 - l1);
-  cout << "force" << f << endl;
-  
-  e->collider.add_force(vec3(0.0f, f, 0.0f));
-  */
-		
-		if(e->do_logic && input_state.k_enter) e->do_logic(e);
-		
-		e->collider.update_physics(time_state);
-		e->transform.set_position(e->collider.t.position());
-		resolve_collision(e->collider);
-		e->transform.set_position(e->collider.t.position());
-		
-		
-		
-		//e->do_logic(e);
-		
-		color =vec4(abs(e->collider.velocity.y), abs(e->collider.velocity.x), abs(e->collider.velocity.z), 1.0f);
-		
-		push_cube(&render_group_cubes, e->transform.position(), color, 1.0f);
-	}
-	if(selected_entity)
-	{
-		imgpushf("m", selected_entity->collider.mass);
-		imgpushv3f("a", selected_entity->collider.acceleration);
-		imgpushf("f", VAR_G);
-		imgpushv3f("v", selected_entity->collider.velocity);
-		imgpushv3f("v/t", selected_entity->collider.velocity * time_state.dt);
-		imgpushv4f("color", color);
-		push_cube(&render_group_cubes, selected_entity->transform.position(), GREEN, 1.25f);
-		push_text(&render_group_text, to_string(selected_entity->id), selected_entity->transform.position(), 0.5f, GREEN);
-		kpl_draw_text(text_info, to_string(selected_entity->id), selected_entity->transform.position()+vec3_up*0.25f, 0.75f, GREEN, 1);
-	}
+	float dt = time_state.dt;
+	vec3 g = vec3(0.0f, VAR_G, 0.0f);
+	vec3 force, added_force, acceleration, velocity;
+	float mass;
 	
-	vec3 mouse_noz = input_state.mouse_w;
-	mouse_noz.z = 0.0f;
-	push_text(&render_group_text, "num of entities:" + to_string(entities.size()),  mouse_noz + vec3_up * 0.25f, 0.5f, GREEN);
-	
-	push_text(&render_group_text, to_string(input_state.mouse_w.x) + ", " + to_string(input_state.mouse_w.y) + ", " + to_string(input_state.mouse_w.z), vec3(512, 512, 0), 0.5f, GREEN);
+	mass = e->RB.mass;
+	force = mass * g;
+	added_force = e->RB.added_force;
+	acceleration = e->RB.acceleration;
+	velocity = e->RB.velocity;
 	
 	
-	LARGE_INTEGER tick_after_loop, tick_before_loop;
-	QueryPerformanceCounter(&tick_before_loop);
-	__int64 interval;
+	//vec3 an = added_force/mass * dt;
+	//vec3 fn = mass * an;
 	
-	render_text_group(render_group_text, text_info, &text_shader, &camera, 0);
-	render_line_group(render_list_lines, &default_shader, &camera);
-	render_cube_group(render_group_cubes, &default_shader, &camera);
-	QueryPerformanceCounter(&tick_after_loop);
-	interval = tick_after_loop.QuadPart - tick_before_loop.QuadPart;
+	e->RB.acceleration = 0.9f * (force+added_force)/mass * dt;
+	//acceleration += an;
 	
-	bf = interval * second_per_tick;
-	render_group_text.clear();
+	
+	e->RB.velocity += acceleration * dt;
+	vec3 result = velocity;
+	
+	e->transform.translate(result);
+	e->ColliderRect.origin += result;
+	added_force = {};
 }
-
-
 
 
 

@@ -56,7 +56,7 @@ void rapidjson_loop(Document &data, Input &input_state)
 							//cout << dis << endl;
 							if ((dis < 0.1f) && input_state.m_left)
 							{
-								push_point(selected_points_to_render, v.pos, GREEN + RED, 16);
+								push_point(v.pos, GREEN + RED, 16);
 								button_pushed = true;
 							}
 							
@@ -69,7 +69,7 @@ void rapidjson_loop(Document &data, Input &input_state)
 							
 							o.nodes.push_back(v);
 							//cout << "node: " << id << endl;
-							push_point(points_to_render, v.pos, GREEN, 8);
+							push_point(v.pos, GREEN, 8);
 							node_index++;
 						}
 					}
@@ -213,7 +213,7 @@ void rapidjson_loop(Document &data, Input &input_state)
 									//o.nodes[ai].weight = rand();
 									//o.nodes[bi].weight = rand();
 									
-									push_line(lines_to_render, o.nodes[ai].pos, o.nodes[bi].pos, RED);
+									push_line(o.nodes[ai].pos, o.nodes[bi].pos, RED);
 								}
 								//b_group.beams.push_back(b);
 							}
