@@ -6,9 +6,10 @@
 !README
 # Except folders
 
-!/include/
-/include/*
+!include/
+include/*
 !/include/kepler
-!/code/
-/code/.vs/*
-
+code/*
+!code/*.cpp
+!code/*.h
+!code/*.txt
