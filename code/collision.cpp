@@ -219,10 +219,12 @@ void ResolveRectCollision(Entity *a, Entity *b)
 		float e = fmin(a->RB.e, b->RB.e);
 		
 		float j = -(1.0f + e) * Magnitude;
+		//if(j == 0.0f) return;
 		j /= a->RB.InvMass + b->RB.InvMass;
 		
 		vec3 Impulse = j * n;
 		
+		logpushv3f("Impulse", Impulse);
 		
 		a->RB.velocity += a->RB.InvMass * Impulse;
 		b->RB.velocity -= b->RB.InvMass * Impulse;
@@ -231,13 +233,10 @@ void ResolveRectCollision(Entity *a, Entity *b)
 		vec3 t = (dot(RelativeVelocity, n) * n);
 		vec3 fn = RelativeVelocity - t;
 		
-		if(fn.x == 0.0f && fn.y == 0.0f) return;
-		
 		vec3 TangentVector = normalize(fn);
 		
 		float fj = -dot(RelativeVelocity, TangentVector);
-		
-		if(fj == 0.0f) return;
+		//if(fj == 0.0f) return;
 		
 		fj /= a->RB.InvMass + b->RB.InvMass;
 		

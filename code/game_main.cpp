@@ -973,6 +973,8 @@ display_info.h = mode.h;*/
 			set_inactive(input_state.mouse_wheel.state, kAxisY);
 		}
 		
+		logpushf("time", time_state.seconds_passed);
+		log_dump_list();
 		//tomato.velocity = tomato.vl - tomato.vc;
 		//tomato.vl = tomato.vc;
 		

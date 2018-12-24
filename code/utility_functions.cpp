@@ -41,6 +41,7 @@ write_file(char* fileName, string data)
 		if (WriteFile(fileHandle, data.c_str(), data.length(), &BytesWritten, 0) && (data.length() == BytesWritten))
 		{
 			error = 1;
+			CloseHandle(fileHandle);
 		}
 		else
 		{

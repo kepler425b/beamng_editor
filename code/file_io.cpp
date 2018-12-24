@@ -249,3 +249,103 @@ Model import_model(char *file)
 }
 
 
+struct log_text_list {
+	uc16 type = 0x0;
+	string tag;
+	vec3 v3;
+	vec4 v4;
+	float f;
+	int i;
+};
+
+vector<log_text_list> log_text_group;
+string log_file;
+
+void logpushv3f(string tag, vec3 v)
+{
+	log_text_list t;
+	set_active(t.type, IMGV3);
+	t.tag = tag;
+	t.v3 = v;
+	log_text_group.push_back(t);
+}
+
+
+void logpushv4f(string tag, vec4 v)
+{
+	log_text_list t;
+	set_active(t.type, IMGV4);
+	t.tag = tag;
+	t.v4 = v;
+	log_text_group.push_back(t);
+}
+
+void logpushf(string tag, float f)
+{
+	log_text_list t;
+	set_active(t.type, IMGF);
+	t.tag = tag;
+	t.f = f;
+	log_text_group.push_back(t);
+}
+
+void logpushi(string tag, int i)
+{
+	log_text_list t;
+	set_active(t.type, IMGI);
+	t.tag = tag;
+	t.i = i;
+	log_text_group.push_back(t);
+}
+
+void log_dump_list()
+{
+	if (log_text_group.size() > 0)
+	{
+		for(ui32 i = 0; i < log_text_group.size(); i++)
+		{
+			log_text_list *it = &log_text_group[i];
+			if(it->type & IMGV3)
+			{
+				log_file += it->tag.c_str();
+				log_file += ": ";
+				log_file += to_string(it->v3.x);
+				log_file += ", ";
+				log_file += to_string(it->v3.y);
+				log_file += ", ";
+				log_file += to_string(it->v3.z);
+				log_file += "\n";
+			}
+			else if(it->type & IMGV4)
+			{
+				log_file += it->tag.c_str();
+				log_file += ": ";
+				log_file += to_string(it->v4.x);
+				log_file += ", ";
+				log_file += to_string(it->v4.y);
+				log_file += ", ";
+				log_file += to_string(it->v4.z);
+				log_file += ", ";
+				log_file += to_string(it->v4.w);
+				log_file += "\n";
+			}
+			else if(it->type & IMGF)
+			{
+				log_file += it->tag.c_str();
+				log_file += ": ";
+				log_file += to_string(it->f);
+				log_file += "\n";
+			}
+			else if(it->type &IMGI)
+			{
+				log_file += it->tag.c_str();
+				log_file += ": ";
+				log_file += to_string(it->i);
+				log_file += "\n";
+			}
+		}
+	}
+	write_file("log.txt", log_file);
+	log_file.clear();
+}
+

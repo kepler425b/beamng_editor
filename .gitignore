@@ -8,5 +8,4 @@
 include/*
 !include/kepler/
 !code/
-!code/entities.cpp 
 
