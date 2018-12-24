@@ -1,11 +1,14 @@
 # Ignore everything in this directory
 <<<<<<< HEAD
-*
+/*
 # Except this file
 !.gitignore
 !README
 # Except folders
-include/*
-!include/kepler/
-!code/
+
+!/include/
+/include/*
+!/include/kepler
+!/code/
+/code/.vs/*
 
