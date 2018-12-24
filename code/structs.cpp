@@ -99,7 +99,7 @@ struct Input
 	};
 	union
 	{
-		bool keys[20];
+		bool keys[22];
 		struct
 		{
 			bool m_left_click;
@@ -124,6 +124,8 @@ struct Input
 			bool k_space;
 			bool k_r;
 			bool k_z;
+			bool k_y;
+			bool k_x;
 		};
 	};
 	float mwheel = 0.0f;

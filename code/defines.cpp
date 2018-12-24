@@ -11,6 +11,7 @@
 #define GREEN vec4(0, 1, 0, 1)
 #define BLUE vec4(0, 0, 1, 1)
 #define TRAN vec4(0.97f, 0.83f, 0.17, 1.0f)
+#define WHITE vec4(1, 1, 1, 1)
 //vectors
 #define vec3_zero vec3(0, 0, 0)
 #define vec3_up vec3(0, 1, 0)
@@ -118,12 +119,29 @@ float rand_frange(float min, float max)
 	return min + r * (max - min);
 }
 
+float rand_irange(ui32 min, ui32 max)
+{
+	float r = (ui32)rand() / (ui32)RAND_MAX;
+	return min + r * (max - min);
+}
+
+
 vec3 rand_vec3(float min, float max)
 {
 	return vec3(rand_frange(min, max), rand_frange(min, max), rand_frange(min, max));
 }
 
+vec3 rand_ivec3(ui32 min, ui32 max)
+{
+	return vec3(rand_irange(min, max), rand_irange(min, max), rand_irange(min, max));
+}
+
 vec2 rand_vec2(float min, float max)
 {
 	return vec2(rand_frange(min, max), rand_frange(min, max));
+}
+
+vec4 rand_color(float min, float max, float amin)
+{
+	return vec4(rand_frange(min, max), rand_frange(min, max), rand_frange(min, max), rand_frange(amin, 1.0f));
 }

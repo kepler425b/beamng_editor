@@ -129,6 +129,15 @@ void process_input()
 					input_state.k_r = true;
 					break;
 					
+					
+					case SDLK_x:
+					input_state.k_x = true;
+					break;
+					
+					case SDLK_y:
+					input_state.k_y = true;
+					break;
+					
 					case SDLK_o:
 					camera.view_mode = CMODE_ORBIT;
 					mouse_mode_switch = true;
@@ -229,6 +238,14 @@ void process_input()
 					
 					case SDLK_z:
 					input_state.k_z = 0;
+					break;
+					
+					case SDLK_x:
+					input_state.k_x = 0;
+					break;
+					
+					case SDLK_y:
+					input_state.k_y = 0;
 					break;
 					
 					case SDLK_a:

@@ -60,6 +60,8 @@ void ResetPositions(Entity *e)
 	{
 		vec3 p = rand_vec3(2.0f, 16.0f);
 		p.y = 6.0f;
+		p.z = 0;
+		
 		e->transform.set_position(p);
 		//e->collider.add_force(normalize(input_state.mouse_w - e->collider.t.position())*100.0f);
 	}
@@ -77,6 +79,15 @@ void update_sphere(Entity *e)
 	}
 }
 
+void player_controller(Entity *e)
+{
+	Input *i = &input_state;
+	float scale = 5000.0f;
+	if(i->a_up) e->RB.added_force += vec3_up * scale; 
+	if(i->a_down) e->RB.added_force += -vec3_up * scale; 
+	if(i->a_right) e->RB.added_force += vec3_right * scale; 
+	if(i->a_left) e->RB.added_force += -vec3_right * scale; 
+}
 
 void mouse_follower(Entity *e)
 {
@@ -221,7 +232,7 @@ Model* get_mesh_component(int entity_id)
 
 void RB_AddForce(RigidBody *rb, vec3 f)
 {
-	rb->added_force = f * rb->mass;
+	rb->added_force = f / rb->InvMass;
 }
 void RB_UpdatePhysics(Entity *e, Time &time_state)
 {
@@ -230,8 +241,8 @@ void RB_UpdatePhysics(Entity *e, Time &time_state)
 	vec3 force, added_force, acceleration, velocity;
 	float mass;
 	
-	mass = e->RB.mass;
-	force = mass * g;
+	float InvMass = e->RB.InvMass;
+	force = g / InvMass;
 	added_force = e->RB.added_force;
 	acceleration = e->RB.acceleration;
 	velocity = e->RB.velocity;
@@ -240,7 +251,7 @@ void RB_UpdatePhysics(Entity *e, Time &time_state)
 	//vec3 an = added_force/mass * dt;
 	//vec3 fn = mass * an;
 	
-	e->RB.acceleration = 0.9f * (force+added_force)/mass * dt;
+	e->RB.acceleration = 0.9f * (force+added_force) * InvMass * dt;
 	//acceleration += an;
 	
 	
@@ -248,11 +259,14 @@ void RB_UpdatePhysics(Entity *e, Time &time_state)
 	vec3 result = velocity;
 	
 	e->transform.translate(result);
-	e->ColliderRect.origin += result;
+	
 	added_force = {};
 }
 
-
+void RB_Update()
+{
+	
+}
 
 
 

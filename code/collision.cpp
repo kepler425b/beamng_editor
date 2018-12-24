@@ -8,16 +8,18 @@ void ResolveRigidBodyCollision(Entity *e)
 	if(e->transform.position().y <= -2.0f)
 	{
 		vec3 dir = normalize(e->RB.velocity);
-		vec3 nr = vec3(0, 0.707f, 0.707f);
+		vec3 nr = vec3(0, 1, 0);
 		float l = dot(dir, nr);
 		vec3 r = -2.0f*l*nr + dir;
 		vec3 n = normalize(r);
 		e->transform.translate(vec3(0, -2.0f - e->transform.position().y, 0));
+		//e->RB.added_force = -n * e->RB.InvMass / 9.8f; 
 		vec3 v = n * (0.4f * length(e->RB.velocity)); 
 		e->RB.velocity = v;
+		
 		//tomato.add_force(vec3(16.0f, 0, 0.9f));
-		e->RB.acceleration = vec3_zero;
-		e->RB.velocity = vec3_zero;
+		//e->RB.acceleration = vec3_zero;
+		//e->RB.velocity = vec3_zero;
 		debug_line(n, n + r, RED+GREEN, &default_shader, &camera);
 	}
 	else if(e->transform.position().y >= 80.0f)
@@ -31,8 +33,8 @@ void ResolveRigidBodyCollision(Entity *e)
 		vec3 v = n * (0.4f * length(e->RB.velocity)); 
 		e->RB.velocity = v;
 		//tomato.add_force(vec3(16.0f, 0, 0.9f));
-		e->RB.acceleration = vec3_zero;
-		e->RB.velocity = vec3_zero;
+		//e->RB.acceleration = vec3_zero;
+		//e->RB.velocity = vec3_zero;
 		debug_line(n, n + r, RED+GREEN, &default_shader, &camera);
 	}
 }
@@ -41,6 +43,7 @@ struct AABBColInfo {
 	Collider_Rect *a;
 	Collider_Rect *b;
 	float penetration;
+	vec3 points[2];
 	vec3 n;
 };
 
@@ -49,48 +52,126 @@ bool AABBvsAABB(AABBColInfo *info)
 	Collider_Rect *a = info->a;
 	Collider_Rect *b = info->b;
 	
-	vec2 n = a->origin - b->origin;
+	vec3 amin = a->min;
+	vec3 amax = a->min + a->max;
+	vec3 bmin = b->min;
+	vec3 bmax = b->min + b->max;
 	
-	float a_extenct = a->r.x /2;
-	float b_extenct = b->r.x /2;
+	vec3 n = a->min - b->min;
+#if 0
+	vec3 ap = amin + a->max;
+	ap.z += 0.025f;
+	vec3 bp = bmin + b->max;
+	bp.z += 0.025f;
+	push_line(amin, ap, TRAN);
+	push_line(bmin, bp, TRAN);
+#endif
 	
-	float x_overlap = a_extenct + b_extenct - abs(n.x);
+	float a_extenct = (amax.x - amin.x)/2;
+	float b_extenct = (bmax.x - bmin.x)/2;
 	
-	if(x_overlap > 0)
+	float x_overlap = a_extenct + b_extenct - fabs(n.x);
+	
+	if(x_overlap > 0.0f)
 	{
-		float a_extenct = a->r.y/2;
-		float b_extenct = b->r.y/2;
+		vec3 ex = amin + vec3_right * x_overlap;
+		ex.z += 0.025f;
+		push_line(amin, ex, TRAN);
+		ex = bmin + vec3_right * x_overlap;
+		ex.z += 0.025f;
+		push_line(bmin, ex, TRAN);
 		
-		float y_overlap = a_extenct + b_extenct - abs(n.y);
+		float a_extenct = (amax.y - amin.y)/2;
+		float b_extenct = (bmax.y - bmin.y)/2;
 		
-		if(y_overlap > 0)
+		float y_overlap = a_extenct + b_extenct - fabs(n.y);
+		
+		if(y_overlap > 0.0f)
 		{
-			if(n.x < 0)
+			vec3 ex = amin + vec3_up * y_overlap;
+			ex.z += 0.025f;
+			push_line(amin, ex, TRAN);
+			ex = bmin + vec3_up * y_overlap;
+			ex.z += 0.025f;
+			push_line(bmin, ex, TRAN);
+#if 0
+			kpl_draw_text(text_info, "X:" + to_string(x_overlap) + " | Y:" + to_string(y_overlap), amax+vec3_up*0.25f, 0.75f, TRAN, 0);
+#endif
+			if(x_overlap < y_overlap)
 			{
-				info->n = vec3(-1, 0, 0);
-			}
-			else
-			{
-				info->n = vec3(1, 0, 0);
-				info->penetration = x_overlap;
+				if(n.x < 0)
+					info->penetration = x_overlap;
+				info->points[0].x = fmax(amin.x, bmin.x);
+				info->points[0].y = fmax(amin.y, bmin.y);
+				info->points[1].x = fmin(amax.x, bmax.x);
+				info->points[1].y = fmin(amax.y, bmax.y);
 				return 1;
 			}
-		}
-		else
-		{
-			if(n.y < 0)
-			{
-				info->n = vec3(0, -1, 0);
-			}
 			else
 			{
-				info->n = vec3(0, 1, 0);
+				if(n.y < 0)
+				{
+					info->n = vec3(0, 1, 0);
+				}
+				else
+				{
+					info->n = vec3(0, -1, 0);
+				}
 				info->penetration = y_overlap;
+				info->points[0].x = fmax(amin.x, bmin.x);
+				info->points[0].y = fmax(amin.y, bmin.y);
+				info->points[1].x = fmin(amax.x, bmax.x);
+				info->points[1].y = fmin(amax.y, bmax.y);
 				return 1;
 			}
 		}
+		else return 0;
 	}
 	else return 0;
+}
+
+bool TestAABBOverlap(AABBColInfo *info)
+{
+	Collider_Rect *a = info->a;
+	Collider_Rect *b = info->b;
+	
+	vec3 amin = a->min;
+	vec3 amax = a->min + a->max;
+	vec3 bmin = b->min;
+	vec3 bmax = b->min + b->max;
+	
+    float d1x = bmin.x - amax.x;
+    float d1y = bmin.y - amax.y;
+    float d2x = amin.x - bmax.x;
+    float d2y = amin.y - bmax.y;
+	
+    if (d1x > 0.0f || d1y > 0.0f)
+        return FALSE;
+	
+    if (d2x > 0.0f || d2y > 0.0f)
+        return FALSE;
+	
+    return TRUE;
+}
+
+
+void CorrectPenetration(Entity *a, Entity *b)
+{
+	float k_slop = 0.005f;
+	float percent = 0.01f;
+	AABBColInfo info;
+	info.a = &a->ColliderRect;
+	info.b = &b->ColliderRect;
+	if(AABBvsAABB(&info))
+	{
+		if(1)
+		{
+			vec3 correction = (fmax(info.penetration - k_slop, 0.0f) / (a->RB.InvMass + b->RB.InvMass)) * percent * info.n;
+			a->transform.translate(-correction * a->RB.InvMass);
+			b->transform.translate(correction * b->RB.InvMass);
+			imgpushv3f("correction", correction);
+		}
+	}
 }
 
 void ResolveRectCollision(Entity *a, Entity *b)
@@ -101,28 +182,77 @@ void ResolveRectCollision(Entity *a, Entity *b)
 	
 	if(AABBvsAABB(&info))
 	{
+		imgpushf("COLLIDES", 0);
 		
-		push_cube(&render_group_cubes, a->transform.position(), vec4(0, 0, 1, 0.5f), 1.0f);
-		push_cube(&render_group_cubes, b->transform.position(), vec4(0, 0, 1, 0.5f), 1.0f);
+		vec3 pa = a->transform.position();
+		vec3 pb = b->transform.position();
+		vec3 n = info.n;
+		if(n.x != 0)
+		{
+			vec3 p1, p2;
+			p1 = pa; 
+			p2 = pa + n * info.penetration;
+			p1.z += 0.025f;
+			p2.z += 0.025f;
+			push_line(p1, p2, WHITE);
+		}
+		else if(info.n.y != 0)
+		{
+			vec3 p1, p2;
+			p1 = pa; 
+			p2 = pa + n * info.penetration;
+			p1.z += 0.025f;
+			p2.z += 0.025f;
+			push_line(p1, p2, WHITE);
+		}
 		
-		vec3 rv = a->RB.velocity - b->RB.velocity;
-		vec3 n = info.n;  
-		float mag = dot(rv, n);
+		//draw_rect(&default_shader, vec3(info.points[0].x, info.points[0].y, 0.05f), info.points[1].x,
+		//info.points[1].y, vec3(1), 0, 1.0f, TRAN * 1.5f, &camera, 0);
 		
-		if(mag > 0) return;
+		imgpushv3f("min", info.points[0]);
+		imgpushv3f("max", info.points[1]);
+		imgpushv3f("n", n);
+#if 1
+		vec3 RelativeVelocity = a->RB.velocity - b->RB.velocity;
 		
+		float Magnitude = dot(RelativeVelocity, n);
 		float e = fmin(a->RB.e, b->RB.e);
 		
-		float j = (-(1 + e) * mag)/a->RB.mass + b->RB.mass; 
+		float j = -(1.0f + e) * Magnitude;
+		j /= a->RB.InvMass + b->RB.InvMass;
 		
-		vec3 impulse = (1 + e) * mag + j * ((j * n / a->RB.mass) + (j * n / b->RB.mass)) * n;
+		vec3 Impulse = j * n;
 		
-		a->RB.velocity -= a->RB.mass / impulse;
-		b->RB.velocity += b->RB.mass / impulse;
+		
+		a->RB.velocity += a->RB.InvMass * Impulse;
+		b->RB.velocity -= b->RB.InvMass * Impulse;
+		
+		RelativeVelocity = a->RB.velocity - b->RB.velocity;
+		vec3 t = (dot(RelativeVelocity, n) * n);
+		vec3 fn = RelativeVelocity - t;
+		
+		if(fn.x == 0.0f && fn.y == 0.0f) return;
+		
+		vec3 TangentVector = normalize(fn);
+		
+		float fj = -dot(RelativeVelocity, TangentVector);
+		
+		if(fj == 0.0f) return;
+		
+		fj /= a->RB.InvMass + b->RB.InvMass;
+		
+		vec3 FrictionImpulse = fj * fn;
+		imgpushv3f("fn", FrictionImpulse);
+		vec3 fp = a->ColliderRect.min + a->ColliderRect.max*0.5f;
+		fp.z += 0.05f;
+		float m = length(FrictionImpulse) / a->ColliderRect.max.x;
+		push_line(fp, fp + TangentVector * m * 10.0f, WHITE);
+		
+		a->RB.velocity += a->RB.InvMass * FrictionImpulse;
+		b->RB.velocity -= b->RB.InvMass * FrictionImpulse;
 	}
+#endif
 }
-
-
 
 Plane ComputePlane(vec3 a, vec3 b, vec3 c)
 {
@@ -204,8 +334,8 @@ bool cast_ray(RigidBody_Sphere &target, Transform *transform, Ray_Info &info, ve
 
 bool resolve_rect_collisions(Collider_Rect &a, Collider_Rect &b)
 {
-	if (a.origin.x + a.r[0] < b.origin.x || a.origin.x > b.origin.x + b.r[0]) return 0;
-	if (a.origin.y + a.r[1] < b.origin.y || a.origin.y > b.origin.y + b.r[1]) return 0;
+	if (a.max.x < b.min.x || a.min.x > b.max.x) return 0;
+	if (a.max.y < b.min.y || a.min.y > b.max.y) return 0;
 	//if (a.origin.z + a.r[2] < b.origin.z || a.origin.z > b.origin.z + b.r[2]) return 0;
 	return 1;
 }

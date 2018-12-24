@@ -123,7 +123,7 @@ void push_cube(vector<rg_cube> *list, vec3 pos, vec4 color, float scale)
 
 void render_cube_group(vector<rg_cube> &data, shader *s, Camera *camera)
 {
-	assert(data.size() > 0);
+	if(data.size() == 0) return;
 	glUseProgram(s->id);
 	glFrontFace(GL_CCW);
 	glEnable(GL_BLEND);
@@ -1116,10 +1116,10 @@ void draw_rect(shader *s, vec3 pos, float w, float h, vec3 axis, float angle, fl
 	glUniform1i(s->u_state, 1);
 	
 	GLfloat vertices[] = 
-	{ 0, 0, 0, // bottom left corner
-		0,  h, 0, // top left corner
-		w,  h, 0, // top right corner
-		w, 0, 0 }; // bottom right corner
+	{ pos.x, pos.y + h, 0, // bottom left corner
+		pos.x,  pos.y, 0, // top left corner
+		pos.x + w,  pos.y, 0, // top right corner
+		pos.x + w, pos.y + h, 0 }; // bottom right corner
 	
 	GLuint buff;
 	glGenBuffers(1, &buff);

@@ -531,47 +531,67 @@ int main(int argc, char* argv[])
 	static float fogEnd = 5.0; // Fog end z value.
 	float fogColor[4] = { 1.0, 1.0, 1.0, 0.0 };
     
-	Collider_Rect rect_A, rect_B;
-	rect_A.r[0] = 0.4f;
-	rect_A.r[1] = 0.6f;
-	
-	rect_B.r[0] = 0.2f;
-	rect_B.r[1] = 0.8f;
-	
-	
 	star.material = default_shader;
 	star.material.color = TRAN;
 	
-	Entity lm, hm, sphere, RectA;
+	Entity lm, hm, sphere, RectA, player;
+#if 0
 	push_logic(&hm, &ResetPositions);
 	hm.transform.set_position(vec3(0.0f, 7.0f, 0.0f));
 	hm.RB.mass = 50000;
+	hm.RB.InvMass = 1.0f / hm.RB.mass;
 	push_entity(hm);
 	
 	push_logic(&lm, &ResetPositions);
 	lm.transform.set_position(vec3(6.0f, 7.0f, 0.0f));
 	lm.RB.mass = 1;
+	lm.RB.InvMass = 1.0f / lm.RB.mass;
 	push_entity(lm);
 	
 	push_logic(&sphere, &update_sphere);
 	sphere.transform.set_position(vec3(0.0f, 20.0f, 0.0f));
 	sphere.sphere.r = 1.0f;
 	sphere.sphere.mass = 40.0f;
+	sphere.sphere.InvMass = 1.0f / sphere.sphere.mass;
 	push_entity(sphere);
-	
-	for(ui32 i = 0; i < 32; i++)
+#endif 
+	ui32 SIZE = 5;
+	for(ui32 i = 0; i < SIZE; i++)
 	{
-		push_logic(&RectA, &ResetPositions);
-		vec3 p = rand_vec3(-2, 2);
-		RectA.transform.set_position(p);
-		RectA.ColliderRect.origin = p;
-		RectA.RB.mass = 40.0f;
-		vec3 dim = rand_vec3(0.2f, 3.0f);
-		dim.z = 0;
-		RectA.ColliderRect.r = dim; 
-		RectA.tag = COMPONENT_COLLIDER_RECT;
-		push_entity(RectA);
+		for(ui32 j = 0; j < SIZE; j++)
+		{
+			push_logic(&RectA, &ResetPositions);
+			vec4 color = rand_color(0.3f, 1.0f, 0.7f);
+			RectA.ColliderRect.color = color;
+			
+			RectA.RB.mass = 40.0f;
+			RectA.RB.InvMass = 1.0f / RectA.RB.mass;
+			vec3 dim = rand_ivec3(1, 8);
+			dim.z = 0;
+			vec3 p = vec3(i+dim.x*2, j*dim.y, 0);
+			p.z = 0.0f;
+			RectA.transform.set_position(p);
+			RectA.ColliderRect.center = p;
+			RectA.ColliderRect.max = dim;
+			RectA.tag = COMPONENT_COLLIDER_RECT;
+			push_entity(RectA);
+		}
 	}
+	
+	push_logic(&player, &ResetPositions);
+	push_logic(&player, &player_controller);
+	vec3 p = rand_vec3(0, 2);
+	p.z = 0.0f;
+	player.transform.set_position(p);
+	RectA.ColliderRect.color = rand_color(0.3f, 1.0f, 1.0f);
+	player.ColliderRect.center = p;
+	player.RB.mass = 40.0f;
+	player.RB.InvMass = 1.0f / player.RB.mass;
+	vec3 dim = rand_ivec3(1, 3);
+	dim.z = 0;
+	player.ColliderRect.max = dim;
+	player.tag = COMPONENT_COLLIDER_RECT;
+	push_entity(player);
 	
 	
 	
