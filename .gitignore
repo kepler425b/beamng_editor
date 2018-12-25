@@ -8,7 +8,7 @@
 
 !include/
 include/*
-!/include/kepler
+!/include/kepler/
 code/*
 !code/*.cpp
 !code/*.h
